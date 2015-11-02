@@ -61,6 +61,8 @@
  * - mode 0x08 is double height
  * - characters seems to follow IBM PC Code page 437 for opening screen
  * - terminal defaults to cyrillic characterset possibly due to setting in EEPROM
+ * - http://www.phantom.sannata.ru/forum/index.php?t=5200 - Kron-2 for sale
+ * - http://f-picture.net/fp/3b2a0496b981437a9c3f90ed236363c9 - Picture of Kron-2
  *
  */
 
