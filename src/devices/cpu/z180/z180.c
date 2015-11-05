@@ -239,7 +239,7 @@ offs_t z180_device::disasm_disassemble(char *buffer, offs_t pc, const UINT8 *opr
 #define IO_IO3C     IO(Z180_IO3C)
 #define IO_IO3D     IO(Z180_IO3D)
 #define IO_OMCR     IO(Z180_OMCR)
-#define IO_IOCR     IO(Z180_IOCR)
+#define IO_ICR     IO(Z180_ICR)
 
 /* 00 ASCI control register A ch 0 */
 #define Z180_CNTLA0_MPE         0x80
@@ -728,9 +728,9 @@ offs_t z180_device::disasm_disassemble(char *buffer, offs_t pc, const UINT8 *opr
 #define Z180_OMCR_WMASK         0xff
 
 /* 3f I/O control register */
-#define Z180_IOCR_RESET         0x00
-#define Z180_IOCR_RMASK         0xff
-#define Z180_IOCR_WMASK         0xff
+#define Z180_ICR_RESET         0x00
+#define Z180_ICR_RMASK         0xff
+#define Z180_ICR_WMASK         0xff
 
 /***************************************************************************
     CPU PREFIXES
@@ -786,8 +786,8 @@ UINT8 z180_device::z180_readcontrol(offs_t port)
 	UINT8 data = m_iospace->read_byte(port);
 
 	/* remap internal I/O registers */
-	if((port & (IO_IOCR & 0xc0)) == (IO_IOCR & 0xc0))
-		port = port - (IO_IOCR & 0xc0);
+	if((port & (IO_ICR & 0xc0)) == (IO_ICR & 0xc0))
+		port = port - (IO_ICR & 0xc0);
 
 	/* but ignore the data and read the internal register */
 	switch (port + Z180_CNTLA0)
@@ -1200,9 +1200,9 @@ data |= 0x02; // kludge for 20pacgal
 		LOG(("Z180 '%s' OMCR   rd $%02x ($%02x)\n", tag(), data, m_io[port & 0x3f]));
 		break;
 
-	case Z180_IOCR:
-		data = IO_IOCR & Z180_IOCR_RMASK;
-		LOG(("Z180 '%s' IOCR   rd $%02x ($%02x)\n", tag(), data, m_io[port & 0x3f]));
+	case Z180_ICR:
+		data = IO_ICR & Z180_ICR_RMASK;
+		LOG(("Z180 '%s' ICR   rd $%02x ($%02x)\n", tag(), data, m_io[port & 0x3f]));
 		break;
 	}
 
@@ -1215,8 +1215,8 @@ void z180_device::z180_writecontrol(offs_t port, UINT8 data)
 	m_iospace->write_byte(port, data);
 
 	/* remap internal I/O registers */
-	if((port & (IO_IOCR & 0xc0)) == (IO_IOCR & 0xc0))
-		port = port - (IO_IOCR & 0xc0);
+	if((port & (IO_ICR & 0xc0)) == (IO_ICR & 0xc0))
+		port = port - (IO_ICR & 0xc0);
 
 	/* store the data in the internal register */
 	switch (port + Z180_CNTLA0)
@@ -1556,9 +1556,9 @@ void z180_device::z180_writecontrol(offs_t port, UINT8 data)
 		IO_OMCR = (IO_OMCR & ~Z180_OMCR_WMASK) | (data & Z180_OMCR_WMASK);
 		break;
 
-	case Z180_IOCR:
-		LOG(("Z180 '%s' IOCR   wr $%02x ($%02x)\n", tag(), data,  data & Z180_IOCR_WMASK));
-		IO_IOCR = (IO_IOCR & ~Z180_IOCR_WMASK) | (data & Z180_IOCR_WMASK);
+	case Z180_ICR:
+		LOG(("Z180 '%s' ICR   wr $%02x ($%02x)\n", tag(), data,  data & Z180_ICR_WMASK));
+		IO_ICR = (IO_ICR & ~Z180_ICR_WMASK) | (data & Z180_ICR_WMASK);
 		break;
 	}
 }
@@ -2070,7 +2070,7 @@ void z180_device::device_start()
 		state_add(Z180_IO3C,       "IO3C",      IO_IO3C);
 		state_add(Z180_IO3D,       "IO3D",      IO_IO3D);
 		state_add(Z180_OMCR,       "OMCR",      IO_OMCR);
-		state_add(Z180_IOCR,       "IOCR",      IO_IOCR);
+		state_add(Z180_ICR,       "ICR",      IO_ICR);
 	}
 
 	save_item(NAME(m_AF.w.l));
@@ -2239,7 +2239,7 @@ void z180_device::device_reset()
 	IO_IO3C    = Z180_IO3C_RESET;
 	IO_IO3D    = Z180_IO3D_RESET;
 	IO_OMCR    = Z180_OMCR_RESET;
-	IO_IOCR    = Z180_IOCR_RESET;
+	IO_ICR    = Z180_ICR_RESET;
 
 	m_daisy.reset();
 	z180_mmu();

@@ -23,14 +23,14 @@
  * Input a byte from given I/O port
  ***************************************************************/
 #define IN(port)                                                \
-	(((port ^ IO_IOCR) & 0xffc0) == 0) ?                        \
+	(((port ^ IO_ICR) & 0xffc0) == 0) ?                        \
 		z180_readcontrol(port) : m_iospace->read_byte(port)
 
 /***************************************************************
  * Output a byte to given I/O port
  ***************************************************************/
 #define OUT(port,value)                                         \
-	if (((port ^ IO_IOCR) & 0xffc0) == 0)                       \
+	if (((port ^ IO_ICR) & 0xffc0) == 0)                       \
 		z180_writecontrol(port,value);                          \
 	else m_iospace->write_byte(port,value)
 

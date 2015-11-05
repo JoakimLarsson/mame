@@ -102,7 +102,7 @@ enum
 	Z180_IO3C,      /* 3c reserved */
 	Z180_IO3D,      /* 3d reserved */
 	Z180_OMCR,      /* 3e operation mode control register */
-	Z180_IOCR,      /* 3f I/O control register */
+	Z180_ICR,      /* 3f I/O control register */
 	Z180_IOLINES,   /* read/write I/O lines */
 
 	Z180_GENPC = STATE_GENPC,
