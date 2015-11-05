@@ -28,10 +28,10 @@
  * |     |   Z180 MPU            |            +----------+  +-------+   +-------+  |
  * |     +-----------------------+ +-------+                            +-------+  |
  * |                               |74365? |  +---------+    +------+   | 7474  |  |
- * |                               +-------+  | 74374   |    | 7474 |   +-------+  |
+ * |                               +-------+  | 74374   |    |7474.1|   +-------+  |
  * |                                          +---------+    +------+              |
  * |                              +--------+    +-------+    +------+              |
- * |                              | 74243  |    | 74166 |    | 7474 |              |
+ * |                              | 74243  |    | 74166 |    |7474.2|              |
  * |+---------+ +---------------+ +--------+    +-------+    +------+              |
  * ||XTAL     | |               |  +-------+    +-------+       +---+   ..-^-..    |
  * ||12.280MHz| | NM27C512      |  | 7432  |    | 74395 |   93C46CB1| /         \  |
@@ -46,6 +46,20 @@
  * |                 | 74244   |   | 74393 |  |XTL 29.3MHz|  | 7404 |           |R |
  * +-----------------+---------+---+-------+--+-----------+--+------+--------------+
  *
+ * Keyboard interface
+ * ------------------
+ * XT: 1 start bit + 8 data bits @ ~2kbps
+ * AT: 1 start bit + 8 data bits + 1 odd parity bit @ ~10kbps 
+ *
+ * Pin 1 CLK/CTS - 
+ * Pin 2 RxD   (AT:+ TxD/RTS) - via R to GND + Pin 4 (out) 7407 + pin 11 (DS0) 74299 8 bit shift register
+ *       u                                 Pin 3 (in)  7407 + pin 11 (INT2) CPU + pin 1 74299 
+ *  1         3                            + pin 4 (*PRE) 7474.2 + pin 6 (*Q) 7474.2
+ *    4  2  5                              Pin 3 (CLK) 7474.2 + pin 8 (4Y) 7414
+ *                                         Pin 2 (D) 7474.2 + Pin 17 (Q7 serial out) 74299
+ * Pin 3 Reset (AT:+ NC)
+ * Pin 4 GND                  - GND
+ * Pin 5 +5v                  - VCC
  *
  * Identified chips
  * -----------------
@@ -56,6 +70,9 @@
  *
  * Misc findings
  * --------------
+ * - $17B9 might be keyboard input routine
+ * - indentified used OUT ports: $00, $02, $04, $07, $08, $0A, $0C, $0E, $0F, $40, $60  
+ * - identified used IN ports: $10 (keyboard?), $30
  * - screen memory at 0x8700
  * - each position has 2 bytes <character> + <mode>
  * - mode 0x08 is double height
