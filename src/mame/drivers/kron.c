@@ -94,17 +94,23 @@ class kron180_state : public driver_device
 public:
 kron180_state(const machine_config &mconfig, device_type type, const char *tag) :
 	driver_device (mconfig, type, tag),
-		m_maincpu (*this, "maincpu"){ }
+		m_maincpu (*this, "maincpu"),
+		m_videoram(*this, "videoram") { }
 
-	virtual void machine_start ();
-
+	UINT32 screen_update_kron180(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+protected:
 	required_device<cpu_device> m_maincpu;
+	required_shared_ptr<UINT8> m_videoram;
+private:
+	virtual void machine_start ();
 };
 
 static ADDRESS_MAP_START (kron180_mem, AS_PROGRAM, 8, kron180_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE (0x00000, 0x07fff) AM_ROM /* 32 Kb of EPROM	*/
-	AM_RANGE (0x08000, 0x09fff) AM_RAM /*  8 Kb of SRAM		*/
+	AM_RANGE (0x08000, 0x085ff) AM_RAM 
+	AM_RANGE (0x08600, 0x095ff) AM_RAM AM_SHARE("videoram")
+	AM_RANGE (0x09600, 0x09fff) AM_RAM 
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kron180_iomap, AS_IO, 8, kron180_state )
@@ -114,6 +120,39 @@ ADDRESS_MAP_END
 /* Input ports */
 static INPUT_PORTS_START (kron180)
 INPUT_PORTS_END
+
+/* Video */
+
+UINT32 kron180_state::screen_update_kron180(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
+{
+	UINT8 x,y;//,gfx=0;
+
+	for (y = 0; y < 24; y++)
+	{
+//		UINT16 *p = &bitmap.pix16(y);
+#define CHARS 64
+		for (x = 0; x < CHARS * 2; x++)
+		{
+			printf("%c", isalnum(m_videoram[x * 2 + y * 256]) ? m_videoram[x * 2 + y * 256] : ' ');
+#if 0
+			if (m_cb2)
+				gfx = m_videoram[ x | (y<<3)];
+
+			*p++ = BIT(gfx, 7);
+			*p++ = BIT(gfx, 6);
+			*p++ = BIT(gfx, 5);
+			*p++ = BIT(gfx, 4);
+			*p++ = BIT(gfx, 3);
+			*p++ = BIT(gfx, 2);
+			*p++ = BIT(gfx, 1);
+			*p++ = BIT(gfx, 0);
+#endif
+		}
+		printf("|\n|");
+	}
+	printf("\n-------------------------------------\n");
+	return 0;
+}
 
 /* Start it up */
 void kron180_state::machine_start ()
@@ -129,6 +168,18 @@ static MACHINE_CONFIG_START (kron180, kron180_state)
 	MCFG_CPU_ADD ("maincpu", Z180, XTAL_6MHz)
 	MCFG_CPU_PROGRAM_MAP (kron180_mem)
 	MCFG_CPU_IO_MAP(kron180_iomap)
+
+	/* video hardware */
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_SIZE(80, 24)
+	MCFG_SCREEN_VISIBLE_AREA(0, 80, 0, 24)
+	MCFG_SCREEN_UPDATE_DRIVER(kron180_state, screen_update_kron180)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(25))
+	MCFG_SCREEN_PALETTE("palette")
+
+	MCFG_PALETTE_ADD_BLACK_AND_WHITE("palette")
+
 MACHINE_CONFIG_END
 
 /* ROM definitions */
