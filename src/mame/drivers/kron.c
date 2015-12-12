@@ -73,7 +73,7 @@
  * - $17B9 might be keyboard input routine
  * - indentified used OUT ports: $00, $02, $04, $07, $08, $0A, $0C, $0E, $0F, $40, $60  
  * - identified used IN ports: $10 (keyboard?), $30
- * - screen memory at 0x8700
+ * - screen memory at 0x8600
  * - each position has 2 bytes <character> + <mode>
  * - mode 0x08 is double height
  * - characters seems to follow IBM PC Code page 437 for opening screen
@@ -125,32 +125,73 @@ INPUT_PORTS_END
 
 UINT32 kron180_state::screen_update_kron180(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	UINT8 x,y;//,gfx=0;
+	INT32 x,y,z;
+//,gfx=0;
+//	UINT8 z;
+
+	bitmap.fill(1, cliprect);
+//	int *p = (int *) bitmap.raw_pixptr(0,0);
+//	*p = 0x55;
+
+	printf("screen is %d x %d pixels @ %d bpp\n", cliprect.right(), cliprect.bottom(), bitmap.bpp());
 
 	for (y = 0; y < 24; y++)
 	{
-//		UINT16 *p = &bitmap.pix16(y);
-#define CHARS 64
-		for (x = 0; x < CHARS * 2; x++)
+		for (x = 0; x < 80; x++)
 		{
+			// Why doesn't this fill the screen?
+			for (z = 0; z < 10; z++)
+			{
+				int *p = (int *) bitmap.raw_pixptr(y * 10 + z, x * 10);
+				*p++ = BIT(0xff, 9);
+				*p++ = BIT(0xff, 8);
+				*p++ = BIT(0xff, 7);
+				*p++ = BIT(0xff, 6);
+				*p++ = BIT(0xff, 5);
+				*p++ = BIT(0xff, 4);
+				*p++ = BIT(0xff, 3);
+				*p++ = BIT(0xff, 2);
+				*p++ = BIT(0xff, 1);
+				*p++ = BIT(0xff, 0);
+			}
+		}
+	}
+
+#if 0
+	for (y = 0; y < 24; y++)
+	{
+		UINT16 *p;
+#define CHARS 80
+		for (x = 0; x < CHARS; x++)
+		{
+			p = &bitmap.pix16(y * 256 + x * 2);
 			printf("%c", isalnum(m_videoram[x * 2 + y * 256]) ? m_videoram[x * 2 + y * 256] : ' ');
+
 #if 0
 			if (m_cb2)
 				gfx = m_videoram[ x | (y<<3)];
-
-			*p++ = BIT(gfx, 7);
-			*p++ = BIT(gfx, 6);
-			*p++ = BIT(gfx, 5);
-			*p++ = BIT(gfx, 4);
-			*p++ = BIT(gfx, 3);
-			*p++ = BIT(gfx, 2);
-			*p++ = BIT(gfx, 1);
-			*p++ = BIT(gfx, 0);
+#endif
+			gfx = 0xf;
+//			*p = BIT(gfx, 1);
+#if 0
+//			for (z = 0; z < 8; z++)
+//			{
+				*p++ = BIT(gfx, 7);
+				*p++ = BIT(gfx, 6);
+				*p++ = BIT(gfx, 5);
+				*p++ = BIT(gfx, 4);
+				*p++ = BIT(gfx, 3);
+				*p++ = BIT(gfx, 2);
+				*p++ = BIT(gfx, 1);
+				*p++ = BIT(gfx, 0);
+//			}
 #endif
 		}
 		printf("|\n|");
+		p += gfx;
 	}
 	printf("\n-------------------------------------\n");
+#endif
 	return 0;
 }
 
@@ -172,13 +213,13 @@ static MACHINE_CONFIG_START (kron180, kron180_state)
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_SIZE(80, 24)
-	MCFG_SCREEN_VISIBLE_AREA(0, 80, 0, 24)
+	MCFG_SCREEN_SIZE(80 * 10, 24 * 10)
+	MCFG_SCREEN_VISIBLE_AREA(0, 799, 0, 239)
 	MCFG_SCREEN_UPDATE_DRIVER(kron180_state, screen_update_kron180)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(25))
 	MCFG_SCREEN_PALETTE("palette")
 
-	MCFG_PALETTE_ADD_BLACK_AND_WHITE("palette")
+	MCFG_PALETTE_ADD_MONOCHROME_GREEN("palette")
+//	MCFG_PALETTE_ADD_BLACK_AND_WHITE("palette")
 
 MACHINE_CONFIG_END
 
@@ -187,7 +228,7 @@ ROM_START (kron180)
 	ROM_REGION (0x1000000, "maincpu", 0)
 
 #if 0
-// Full 64Kb EPROM but forst half was just garbish to trimmed away the first 32Kb from the EPROM
+// Full 64Kb EPROM but first half was just garbish so I trimmed away the first 32Kb from the EPROM
 	ROM_LOAD ("kron.bin", 0x000000, 0x8000, CRC (ae0642ad) SHA1 (2c53a714de6af4b64e46fcd34bca6d4438511765))
 #endif
 
