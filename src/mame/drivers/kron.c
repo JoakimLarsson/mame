@@ -19,7 +19,7 @@
  * |     |     RS232C       | |Serial PN|    | CENTRONICS PN   | | VGA   | |KEYBRD||
  * |     +------------------+ +---------+    +-----------------+ +-------+ +------+|
  * |                      +-----+  +-------+  +---------+    +------+ +---------+  |
- * |                      | 1488|  |CD75189|  | 74299   |    | 7407 | | 74244   |  |
+ * |                      | 1488|  |CD75189|  | 74299   |    | 7407 | | 74244.1 |  |
  * |                      +-----+  +-------+  +---------+    +------+ +---------+  |
  * |                                           +---------+   +------+              |
  * |                               +-------+   | 74670   |   | 7403 |              |
@@ -27,7 +27,7 @@
  * |     |   Z8018006PSC         | +-------+  | 74374    |  | 74151 |   | 74174 |  |
  * |     |   Z180 MPU            |            +----------+  +-------+   +-------+  |
  * |     +-----------------------+ +-------+                            +-------+  |
- * |                               |74365? |  +---------+    +------+   | 7474  |  |
+ * |                               |7432.1 |  +---------+    +------+   | 7474  |  |
  * |                               +-------+  | 74374   |    |7474.1|   +-------+  |
  * |                                          +---------+    +------+              |
  * |                              +--------+    +-------+    +------+              |
@@ -45,6 +45,20 @@
  * |                 +---------+   +-------+  +-----------+  +------+           |W |
  * |                 | 74244   |   | 74393 |  |XTL 29.3MHz|  | 7404 |           |R |
  * +-----------------+---------+---+-------+--+-----------+--+------+--------------+
+ *
+ * 74299 - 8 bit bidirectional universal shift/storage register
+ * 7407  - 6 open collector drivers
+ * 74244 - Octal buffers/line drivers/line receivers
+ * 74670 - 4 x 4 register file with 3-state outputs
+ * 74151 - 1 of 8 demultiplexor
+ * 74374 - octal D type flip flops
+ * 74174 - 6 D type  flip flops with clear
+ * 75189 - quadruple line receivers
+ * 74395 - 4 bit universal shift registers
+ * 74393 - dual 4 bit counters
+ * 74259 - 8 bit adressable latches
+ * 74166 - 8 bit shift register
+ * 
  *
  * Keyboard interface
  * ------------------
@@ -133,7 +147,7 @@ UINT32 kron180_state::screen_update_kron180(screen_device &screen, bitmap_ind16 
 //	int *p = (int *) bitmap.raw_pixptr(0,0);
 //	*p = 0x55;
 
-	printf("screen is %d x %d pixels @ %d bpp\n", cliprect.right(), cliprect.bottom(), bitmap.bpp());
+//	printf("screen is %d x %d pixels @ %d bpp\n", cliprect.right(), cliprect.bottom(), bitmap.bpp());
 
 	for (y = 0; y < 24; y++)
 	{
