@@ -207,7 +207,8 @@ The vector is modified based upon the interrupt source within the Z85230. Interr
 programmed via the MCchip. The Z85230s are interfaced as DTE (data terminal equipment) with EIA-232-D
 signal levels. The four serial ports are routed to four RJ45 telephone connectors on the MVME162LX front panel.*/
 
-#define BAUDGEN_CLOCK XTAL_5MHz            /* Baud rate on the MVME162 is programmable but defaults to 8N1 9600 */
+/* Baud rate on the MVME162 is programmable but defaults to 8N1 9600 */
+#define BAUDGEN_CLOCK XTAL_5MHz 
 #define DIVIDER 1                          /* Need a divider here to communicate correctly with the RS232 terminal device (9600) */
 #define SCC_CLOCK (BAUDGEN_CLOCK/DIVIDER)  /* .. or schematics to implement the clock circuitry correctly. */
 
@@ -273,7 +274,7 @@ static ADDRESS_MAP_START (mvme162_mem, AS_PROGRAM, 32, mvme162_state)
 //	AM_RANGE (0xfffe1018, 0xfffe102f) AM_READWRITE8(pcc8_r,	  pcc8_w,  0xffffffff) /* PCC 8 bits registers */
 //	AM_RANGE (0xfffe2000, 0xfffe201b) AM_READWRITE8(vmechip_r, vmechip_w, 0x00ff00ff) /* VMEchip 8 bits registers on odd adresses */
 
-	AM_RANGE (0xfff45000, 0xfff457ff) AM_DEVREADWRITE8("scc",  scc85230_device, ba_cd_inv_r, ba_cd_inv_w, 0xffffffff) /* Port 1&2 - Dual serial port Z80-SCC */
+	AM_RANGE (0xfff45000, 0xfff45007) AM_DEVREADWRITE8("scc",  scc85230_device, ba_cd_r, ba_cd_w, 0x00ff0000) /* Port 1&2 - Dual serial port Z80-SCC */
 //AM_RANGE (0xfff45000, 0xfff45800) AM_DEVREADWRITE8("scc2", scc85230_device, ba_cd_inv_r, ba_cd_inv_w, 0xffffffff) /* Port 3&4 - Dual serial port Z80-SCC */
 
 	//AM_RANGE(0x100000, 0xfeffff)	AM_READWRITE(vme_a24_r, vme_a24_w) /* VMEbus Rev B addresses (24 bits) - not verified */
@@ -701,25 +702,28 @@ ROM_LOAD("162bug4.0.bin", 0xff800000, 0x80000, CRC (56728e5b) SHA1 (0b8b6725c21d
 /*
  * System ROM information
  *
- * 147bug version 2.44 is released 1999, coprighted by Motorola Inc from 1988
+ * 162bug version 4.00 is released xxxx, coprighted by Motorola Inc from yyyy
  *
- * 147bug SCC channel setup sequence
+ * 162bug SCC channel setup sequence
  *----------------------------------
- *  09 80 - Channel A reset
- *  04 44 - x16 clock, 1 stop bits, no parity
- *  03 C1 - 8 bit, receiver enable, auto enable off
+ *  03 00 - Disable receiver
+ *  05 82 - DTR and RTS low
+ *  09 00 - No reset 
  *  01 00 - 
- *  02 70 - set interrupt vector 70
- *  05 EA
- *  0B 56
- *  0C 0E - low baudrate divider 
- *  0D 00 - hi baudrate divider 
- *  0E 83 - Baud Rate Generator (BRG) enabled, PCLK is BRG source, BRG is DPLL source
- *  06 00 - Tx sync character SDLC
- *  07 00 - Rx sync character SDLC
  *  0F 00 - disable all external interrupt and status
- *  10
- * channel B is identical but resets Channel B of course, SCC2 is also identical except using interrupt vector 71 
+ *  10 30 - 
+ *  28 
+ *  0E 00 -  Baud Rate Generator (BRG) disabled
+ *  0A 00
+ *  0B 52
+ *  0D 00 - hi  baudrate divider 
+ *  0C 1E - low baudrate divider 
+ *  04 44 - x16 clock, 1 stop bits, no parity
+ *  0E 83 - Baud Rate Generator (BRG) enabled, PCLK is BRG source, BRG is DPLL source
+    05 EA
+ *  03 C1 - 8 bit, receiver enable, auto enable off
+ *
+ * channel B is identical but resets Channel B of course, SCC2 is also identical 
  */
 ROM_END
 
