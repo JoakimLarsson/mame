@@ -1532,12 +1532,12 @@ void z80scc_channel::do_sccreg_wr1(UINT8 data)
 	   - Channel B only bits vs
 	   - Parity Is Special Condition, bit2 */
 	m_wr1 = data;
-	LOG(("- External Interrupt Enable %u\n", (data & WR1_EXT_INT_ENABLE) ? 1 : 0));
-	LOG(("- Transmit Interrupt Enable %u\n", (data & WR1_TX_INT_ENABLE) ? 1 : 0));
-	LOG(("- Parity is special condition %u\n", (data & WR1_PARITY_IS_SPEC_COND) ? 1 : 0));
-	LOG(("- Wait/Ready Enable %u\n", (data & WR1_WRDY_ENABLE) ? 1 : 0));
-	LOG(("- Wait/Ready Function %s\n", (data & WR1_WRDY_FUNCTION) ? "Ready" : "Wait"));
-	LOG(("- Wait/Ready on %s\n", (data & WR1_WRDY_ON_RX_TX) ? "Receive" : "Transmit"));
+	LOG(("- External/Status Interrupt Master Enable %u,", (data & WR1_EXT_STATUS_INT_ENABLE) ? 1 : 0));
+	LOG((" Transmitter Interrupt Enable %u,", (data & WR1_TX_INT_ENABLE) ? 1 : 0));
+	LOG((" Parity is special condition %u,", (data & WR1_PARITY_IS_SPEC_COND) ? 1 : 0));
+	LOG((" %s on %s: %u\n", (data & WR1_WAIT_DMA_FUNCTION) ? "Request" : "Wait", 
+				 (data & WR1_WAIT_DMA_ON_RX_TX) ? "Receive" : "Transmit", 
+				 (data & WR1_WAIT_DMA_ENABLE) ? 1 : 0));
 
 	switch (data & WR1_RX_INT_MODE_MASK)
 	{
@@ -1596,6 +1596,7 @@ void z80scc_channel::do_sccreg_wr5(UINT8 data)
 {
 	LOG(("%s(%02x) Setting up the transmitter\n", FUNCNAME, data));
 	m_wr5 = data;
+	update_rts();
 	LOG(("- Transmitter Enable %u\n", (data & WR5_TX_ENABLE) ? 1 : 0));
 	LOG(("- Transmitter Bits/Character %u\n", get_tx_word_length()));
 	LOG(("- Send Break %u\n", (data & WR5_SEND_BREAK) ? 1 : 0));
@@ -1639,18 +1640,18 @@ void z80scc_channel::do_sccreg_wr9(UINT8 data)
 	switch (data & WR9_CMD_MASK)
 	{
 	case WR9_CMD_NORESET:
-		LOG(("\"%s\": %c : Master Interrupt Control - No reset  %02x\n", m_owner->tag(), 'A' + m_index, data));
+		LOG(("%s(%02x) \"%s\": %c : Master Interrupt Control - No reset  %02x\n", FUNCNAME, data, m_owner->tag(), 'A' + m_index, data));
 		break;
 	case WR9_CMD_CHNB_RESET:
-		LOG(("\"%s\": %c : Master Interrupt Control - Channel B reset  %02x\n", m_owner->tag(), 'A' + m_index, data));
+		LOG(("%s(%02x) \"%s\": %c : Master Interrupt Control - Channel B reset  %02x\n", FUNCNAME, data, m_owner->tag(), 'A' + m_index, data));
 		m_uart->m_chanB->reset();
 		break;
 	case WR9_CMD_CHNA_RESET:
-		LOG(("\"%s\": %c : Master Interrupt Control - Channel A reset  %02x\n", m_owner->tag(), 'A' + m_index, data));
+		LOG(("%s(%02x) \"%s\": %c : Master Interrupt Control - Channel A reset  %02x\n", FUNCNAME, data, m_owner->tag(), 'A' + m_index, data));
 		m_uart->m_chanA->reset();
 		break;
 	case WR9_CMD_HW_RESET:
-		LOG(("\"%s\": %c : Master Interrupt Control - Device reset  %02x\n", m_owner->tag(), 'A' + m_index, data));
+		LOG(("%s(%02x) \"%s\": %c : Master Interrupt Control - Device reset  %02x\n", FUNCNAME, data, m_owner->tag(), 'A' + m_index, data));
 		/*"The effects of this command are identical to those of a hardware reset, except that the Shift Right/Shift Left bit is
 		  not changed and the MIE, Status High/Status Low and DLC bits take the programmed values that accompany this command."
 		  The Shift Right/Shift Left bits of the WR0 is only valid on SCC8030 device hence not implemented yet, just the SCC8530 */
@@ -1848,7 +1849,7 @@ void z80scc_channel::do_sccreg_wr14(UINT8 data)
 			m_rcv_mode = RCV_SEEKING;
 #endif
 #else
-			m_brg_rate = rate / 2 * get_clock_mode();
+			m_brg_rate = rate / (2 * get_clock_mode());
 			update_serial();
 #endif
 		}
@@ -2172,7 +2173,7 @@ WRITE_LINE_MEMBER( z80scc_channel::cts_w )
 				m_rr0 &= ~RR0_CTS;
 
 			// trigger interrupt
-			if (m_wr1 & WR1_EXT_INT_ENABLE)
+			if (m_wr1 & WR1_EXT_STATUS_INT_ENABLE)
 			{
 				// trigger interrupt
 				m_uart->trigger_interrupt(m_index, INT_EXTERNAL);
@@ -2215,7 +2216,7 @@ WRITE_LINE_MEMBER( z80scc_channel::dcd_w )
 			else
 				m_rr0 &= ~RR0_DCD;
 
-			if (m_wr1 & WR1_EXT_INT_ENABLE)
+			if (m_wr1 & WR1_EXT_STATUS_INT_ENABLE)
 			{
 				// trigger interrupt
 				m_uart->trigger_interrupt(m_index, INT_EXTERNAL);
@@ -2248,7 +2249,7 @@ WRITE_LINE_MEMBER( z80scc_channel::ri_w )
 			else
 				m_rr0 &= ~RR0_RI;
 
-			if (m_wr1 & WR1_EXT_INT_ENABLE)
+			if (m_wr1 & WR1_EXT_STATUS_INT_ENABLE)
 			{
 				// trigger interrupt
 				m_uart->trigger_interrupt(m_index, INT_EXTERNAL);
@@ -2386,7 +2387,7 @@ void z80scc_channel::update_serial()
 		if (m_brg_rate == 1) m_brg_rate = 0; // BRG beeing disabled
 		set_rcv_rate(m_brg_rate);
 		set_tra_rate(m_brg_rate);
-		LOG(("   - Baud Rate Generator: %d mode: %dx\n", m_brg_rate, get_clock_mode() ));
+		LOG(("   - Baud Rate Generator: %d Bps mode: %dx\n", m_brg_rate, get_clock_mode() ));
 	}
 }
 

@@ -391,17 +391,17 @@ protected:
 
 	enum
 	{
-		WR1_EXT_INT_ENABLE	= 0x01,
-		WR1_TX_INT_ENABLE	= 0x02,
-		WR1_PARITY_IS_SPEC_COND	= 0x04,
-		WR1_RX_INT_MODE_MASK	= 0x18,
-		WR1_RX_INT_DISABLE	= 0x00,
-		WR1_RX_INT_FIRST	= 0x08,
-		WR1_RX_INT_ALL_PARITY	= 0x10, // not supported
-		WR1_RX_INT_ALL		= 0x18,
-		WR1_WRDY_ON_RX_TX	= 0x20, // not supported
-		WR1_WRDY_FUNCTION	= 0x40, // not supported
-		WR1_WRDY_ENABLE		= 0x80  // not supported
+		WR1_EXT_STATUS_INT_ENABLE	= 0x01,
+		WR1_TX_INT_ENABLE		= 0x02,
+		WR1_PARITY_IS_SPEC_COND		= 0x04,
+		WR1_RX_INT_MODE_MASK		= 0x18,
+		WR1_RX_INT_DISABLE		= 0x00,
+		WR1_RX_INT_FIRST		= 0x08,
+		WR1_RX_INT_ALL_PARITY		= 0x10, // not supported
+		WR1_RX_INT_ALL			= 0x18,
+		WR1_WAIT_DMA_ON_RX_TX		= 0x20, // not supported
+		WR1_WAIT_DMA_FUNCTION		= 0x40, // not supported
+		WR1_WAIT_DMA_ENABLE		= 0x80  // not supported
 	};
 
 	enum
@@ -511,6 +511,18 @@ protected:
 
 	enum
 	{
+		WR15_WR7_PRIME_ENABLE		= 0x01, // 85C30/ESCC
+		WR15_ZERO_CROSS_INT_ENABLE	= 0x02,
+		WR15_STATUS_FIFO_ENABLE		= 0x04, // CMOS/ESCC
+		WR15_DCD_INT_ENABLE		= 0x08,
+		WR15_SYNC_HUNT_INT_ENABLE	= 0x10,
+		WR15_CTS_INT_ENABLE		= 0x20,
+		WR15_TX_UNDRUN_EOM_INT_ENABLE 	= 0x40,
+		WR15_BREAK_ABORT_INT_ENABLE	= 0x80,
+	};
+
+	enum
+	{
 		TIMER_ID_BAUD,
 		TIMER_ID_XTAL,
 		TIMER_ID_RTXC,
@@ -521,7 +533,7 @@ protected:
 	emu_timer *baudtimer;
 	UINT16 m_brg_counter;
 #else
-	UINT16 m_brg_rate;
+	int m_brg_rate;
 #endif
 	UINT16 m_brg_const;
 
