@@ -263,6 +263,7 @@ static ADDRESS_MAP_START (mvme162_mem, AS_PROGRAM, 32, mvme162_state)
 	AM_RANGE (0x00000008, 0x003fffff) AM_RAM /* 4 Mb RAM */
 	AM_RANGE (0xff800000, 0xff9fffff) AM_ROM AM_REGION("maincpu", 0xff800000) //AM_MIRROR(0x00780000) /* ROM/EEPROM bank 1 - 162bug */
 	AM_RANGE (0xffa00000, 0xffbfffff) AM_ROM AM_REGION("maincpu", 0xffa00000) //AM_MIRROR(0x00780000) /* ROM/EEPROM bank 2 - unpopulated */
+	AM_RANGE (0xffe00000, 0xffe1ffff) AM_RAM /* 128Kb On-board SRAM */
 
         /*  SGS-Thompson M48T18 RAM and clock chip, only 4088 bytes used,  and 8 bytes for the RTC, out of 8Kb though */
 	AM_RANGE (0xfffe0000, 0xfffe0fff) AM_DEVREADWRITE8("m48t18", timekeeper_device, read, write, 0xffffffff)
