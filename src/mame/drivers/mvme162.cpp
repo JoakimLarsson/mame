@@ -208,9 +208,7 @@ programmed via the MCchip. The Z85230s are interfaced as DTE (data terminal equi
 signal levels. The four serial ports are routed to four RJ45 telephone connectors on the MVME162LX front panel.*/
 
 /* Baud rate on the MVME162 is programmable but defaults to 8N1 9600 */
-#define BAUDGEN_CLOCK XTAL_5MHz 
-#define DIVIDER 1                          /* Need a divider here to communicate correctly with the RS232 terminal device (9600) */
-#define SCC_CLOCK (BAUDGEN_CLOCK/DIVIDER)  /* .. or schematics to implement the clock circuitry correctly. */
+#define SCC_CLOCK XTAL_9_8304MHz /* Calculated value, needs to be verified on schematics */
 
 class mvme162_state : public driver_device
 {
@@ -708,14 +706,15 @@ ROM_LOAD("162bug4.0.bin", 0xff800000, 0x80000, CRC (56728e5b) SHA1 (0b8b6725c21d
  *----------------------------------
  *  03 00 - Disable receiver
  *  05 82 - DTR and RTS low
- *  09 00 - No reset 
- *  01 00 - 
+ *  09 00 - No reset and disable special interrupts modes
+ *  01 00 - Wait on Transmit: 0, Parity is special condition: 0 disable Rx and TX interrupts, External interrupt: 0
  *  0F 00 - disable all external interrupt and status
- *  10 30 - 
- *  28 
- *  0E 00 -  Baud Rate Generator (BRG) disabled
- *  0A 00
- *  0B 52
+ * (00)10 - Reset Ext/Status Interrupts
+ * (00)30 - Error Reset
+ * (00)28 - Reset Tx Int Pending
+ *  0E 00 - Baud Rate Generator (BRG) disabled
+ *  0A 00 - Disable some syncrounous features
+ *  0B 52 - TTL clock, BRG output as Rx and TX clock source and on TRxC pin 
  *  0D 00 - hi  baudrate divider 
  *  0C 1E - low baudrate divider 
  *  04 44 - x16 clock, 1 stop bits, no parity
