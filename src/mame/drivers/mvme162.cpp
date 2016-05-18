@@ -180,6 +180,7 @@
 #include "cpu/m68000/m68000.h"
 #include "machine/z80scc.h"
 #include "bus/rs232/rs232.h"
+#include "machine/nvram.h"
 #include "machine/clock.h"
 #include "machine/timekpr.h"
 
@@ -196,7 +197,7 @@
 #define FUNCNAME __PRETTY_FUNCTION__
 #endif
 
-/* from documentataion: http://www.m88k.com/Docs/147/147aih.pdf but crystal and divider not known */
+/* from documentataion: http://www.m88k.com/Docs/162/162lxpgd.pdf */
 /*Serial Communications Interface
 The MVME162LX uses two Zilog Z85230 serial port controllers to implement the four serial communications 
 interfaces. Each interface supports CTS, DCD, RTS, and DTR control signals; as well as the TXD and RXD 
@@ -214,10 +215,10 @@ class mvme162_state : public driver_device
 {
 public:
 mvme162_state(const machine_config &mconfig, device_type type, const char *tag) :
-		driver_device (mconfig, type, tag),
-		m_maincpu (*this, "maincpu")
-		,m_sccterm(*this, "scc")
-//		,m_sccterm2(*this, "scc2")
+	driver_device (mconfig, type, tag),
+	m_maincpu (*this, "maincpu")
+	,m_sccterm(*this, "scc")
+	//		,m_sccterm2(*this, "scc2")
 	{
 	}
 
@@ -239,8 +240,6 @@ mvme162_state(const machine_config &mconfig, device_type type, const char *tag) 
 	virtual void machine_start () override;
 	virtual void machine_reset () override;
 protected:
-
-private:
 	required_device<cpu_device> m_maincpu;
 	required_device<scc85230_device> m_sccterm;
   //	required_device<scc85230_device> m_sccterm2;
@@ -248,12 +247,13 @@ private:
 	// Pointer to System ROMs needed by bootvect_r and masking RAM buffer for post reset accesses
 	UINT32	*m_sysrom;
 	UINT32	m_sysram[2];
-
+#if 0
 	// PCC registers
 	UINT8	m_genpurp_stat;
 
 	// VME chip registers
 	UINT8	m_vc_cntl_conf;
+#endif
 };
 
 static ADDRESS_MAP_START (mvme162_mem, AS_PROGRAM, 32, mvme162_state)
@@ -263,12 +263,12 @@ static ADDRESS_MAP_START (mvme162_mem, AS_PROGRAM, 32, mvme162_state)
 	AM_RANGE (0x00000008, 0x003fffff) AM_RAM /* 4 Mb RAM */
 	AM_RANGE (0xff800000, 0xff9fffff) AM_ROM AM_REGION("maincpu", 0xff800000) //AM_MIRROR(0x00780000) /* ROM/EEPROM bank 1 - 162bug */
 	AM_RANGE (0xffa00000, 0xffbfffff) AM_ROM AM_REGION("maincpu", 0xffa00000) //AM_MIRROR(0x00780000) /* ROM/EEPROM bank 2 - unpopulated */
-	AM_RANGE (0xffe00000, 0xffe1ffff) AM_RAM /* 128Kb On-board SRAM */
+	AM_RANGE (0xffe00000, 0xffe1ffff) AM_RAM AM_SHARE ("nvram") /* 128Kb On-board SRAM with battery backup (nvram) */
 
         /*  SGS-Thompson M48T18 RAM and clock chip, only 4088 bytes used,  and 8 bytes for the RTC, out of 8Kb though */
 	AM_RANGE (0xfffe0000, 0xfffe0fff) AM_DEVREADWRITE8("m48t18", timekeeper_device, read, write, 0xffffffff)
 
-       //AM_RANGE (0xfffe1000, 0xfffe100f) AM_READWRITE32(pcc32_r, pcc32_w, 0xffffffff) /* PCC 32 bits registers  - needs U64 cast defined to work */
+//  AM_RANGE (0xfffe1000, 0xfffe100f) AM_READWRITE32(pcc32_r, pcc32_w, 0xffffffff) /* PCC 32 bits registers  - needs U64 cast defined to work */
 //	AM_RANGE (0xfffe1010, 0xfffe1017) AM_READWRITE16(pcc16_r, pcc16_w, 0xffffffff) /* PCC 16 bits registers */
 //	AM_RANGE (0xfffe1018, 0xfffe102f) AM_READWRITE8(pcc8_r,	  pcc8_w,  0xffffffff) /* PCC 8 bits registers */
 //	AM_RANGE (0xfffe2000, 0xfffe201b) AM_READWRITE8(vmechip_r, vmechip_w, 0x00ff00ff) /* VMEchip 8 bits registers on odd adresses */
@@ -276,8 +276,8 @@ static ADDRESS_MAP_START (mvme162_mem, AS_PROGRAM, 32, mvme162_state)
 	AM_RANGE (0xfff45000, 0xfff45007) AM_DEVREADWRITE8("scc",  scc85230_device, ba_cd_r, ba_cd_w, 0x00ff0000) /* Port 1&2 - Dual serial port Z80-SCC */
 //AM_RANGE (0xfff45000, 0xfff45800) AM_DEVREADWRITE8("scc2", scc85230_device, ba_cd_inv_r, ba_cd_inv_w, 0xffffffff) /* Port 3&4 - Dual serial port Z80-SCC */
 
-	//AM_RANGE(0x100000, 0xfeffff)	AM_READWRITE(vme_a24_r, vme_a24_w) /* VMEbus Rev B addresses (24 bits) - not verified */
-	//AM_RANGE(0xff0000, 0xffffff)	AM_READWRITE(vme_a16_r, vme_a16_w) /* VMEbus Rev B addresses (16 bits) - not verified */
+//AM_RANGE(0x100000, 0xfeffff)	AM_READWRITE(vme_a24_r, vme_a24_w) /* VMEbus Rev B addresses (24 bits) - not verified */
+//AM_RANGE(0xff0000, 0xffffff)	AM_READWRITE(vme_a16_r, vme_a16_w) /* VMEbus Rev B addresses (16 bits) - not verified */
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -291,8 +291,11 @@ void mvme162_state::machine_start ()
 
 	/* Setup pointer to bootvector in ROM for bootvector handler bootvect_r */
 	m_sysrom = (UINT32*)(memregion ("maincpu")->base () + 0xff800000);
+
+#if 0
 	m_genpurp_stat = 0x02; /* Indicate power up reset */
 	m_vc_cntl_conf = 0x01; /* We are the system controller */
+#endif
 }
 
 void mvme162_state::machine_reset ()
@@ -302,7 +305,7 @@ void mvme162_state::machine_reset ()
 	/* Reset pointer to bootvector in ROM for bootvector handler bootvect_r */
 	if (m_sysrom == &m_sysram[0]) /* Condition needed because memory map is not setup first time */
 		m_sysrom = (UINT32*)(memregion ("maincpu")->base () + 0xff800000);
-	m_genpurp_stat &= 0xfe; /* Clear parity error bit - not used by MAME at this point so just for the record */
+	//	m_genpurp_stat &= 0xfe; /* Clear parity error bit - not used by MAME at this point so just for the record */
 }
 
 /* 
@@ -678,6 +681,8 @@ static MACHINE_CONFIG_START (mvme162, mvme162_state)
 	MCFG_CPU_PROGRAM_MAP (mvme162_mem)
 
 	MCFG_M48T02_ADD("m48t18") /* t08 differs only in accepted voltage levels compared to t18 */
+
+	MCFG_NVRAM_ADD_0FILL("nvram")
 
 	/* Terminal Port config */
 	MCFG_SCC85230_ADD("scc", SCC_CLOCK, 0, 0, 0, 0 )
