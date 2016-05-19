@@ -164,23 +164,33 @@
  *
  * DMAC Channel Assignments
  * ----------------------------------------------------------
- * Channel         MVME147
+ * Channel         MVME162
  * ----------------------------------------------------------
  *
  *
  *  TODO:
  *  - Configure SCC:s connected to a terminal
- *  - Pass 147bug bootup tests
+ *  - Pass 162bug bootup tests
  *  - Add VME bus driver
+ *  - Write and add an 82596ca or 82586 ethernet controller device
  *  - Add variants of boards, preferably as runtime configurations
  *
  ****************************************************************************/
+
+#define DISK 0
+#define SCSI 0
 
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/z80scc.h"
 #include "bus/rs232/rs232.h"
 #include "machine/nvram.h"
+#if SCSI
+#include "machine/53c7xx.h"
+#if DISK
+#include "machine/nscsi_hd.h"
+#endif
+#endif
 #include "machine/clock.h"
 #include "machine/timekpr.h"
 
@@ -196,6 +206,8 @@
 #else
 #define FUNCNAME __PRETTY_FUNCTION__
 #endif
+
+#define IRQ_SCSI 0 
 
 /* from documentataion: http://www.m88k.com/Docs/162/162lxpgd.pdf */
 /*Serial Communications Interface
@@ -224,6 +236,15 @@ mvme162_state(const machine_config &mconfig, device_type type, const char *tag) 
 
 	DECLARE_READ32_MEMBER (bootvect_r);
 	DECLARE_WRITE32_MEMBER (bootvect_w);
+
+#if SCSI
+	DECLARE_READ32_MEMBER(ncr53c700_read);
+	DECLARE_WRITE32_MEMBER(ncr53c700_write);
+	DECLARE_WRITE_LINE_MEMBER(scsi_irq);
+#endif
+
+	UINT8   m_irq_status;
+
 	/* PCC - Peripheral Channel Controller */
 	//DECLARE_READ32_MEMBER (pcc32_r);
 	//DECLARE_WRITE32_MEMBER (pcc32_w);
@@ -239,6 +260,8 @@ mvme162_state(const machine_config &mconfig, device_type type, const char *tag) 
 	//DECLARE_WRITE16_MEMBER (vme_a16_w);
 	virtual void machine_start () override;
 	virtual void machine_reset () override;
+	void update_irq(UINT32 which, UINT32 state);
+	IRQ_CALLBACK_MEMBER(irq_callback);
 protected:
 	required_device<cpu_device> m_maincpu;
 	required_device<scc85230_device> m_sccterm;
@@ -275,6 +298,10 @@ static ADDRESS_MAP_START (mvme162_mem, AS_PROGRAM, 32, mvme162_state)
 
 	AM_RANGE (0xfff45000, 0xfff45007) AM_DEVREADWRITE8("scc",  scc85230_device, ba_cd_r, ba_cd_w, 0x00ff0000) /* Port 1&2 - Dual serial port Z80-SCC */
 //AM_RANGE (0xfff45000, 0xfff45800) AM_DEVREADWRITE8("scc2", scc85230_device, ba_cd_inv_r, ba_cd_inv_w, 0xffffffff) /* Port 3&4 - Dual serial port Z80-SCC */
+
+#if SCSI
+	AM_RANGE (0xfff47000, 0xfff47fff) AM_DEVREADWRITE("scsibus:7",  ncr53c7xx_device, read, write)// * FFF47000-FFF47FFF        SCSI (53C710) D32-D8 4Kb
+#endif
 
 //AM_RANGE(0x100000, 0xfeffff)	AM_READWRITE(vme_a24_r, vme_a24_w) /* VMEbus Rev B addresses (24 bits) - not verified */
 //AM_RANGE(0xff0000, 0xffffff)	AM_READWRITE(vme_a16_r, vme_a16_w) /* VMEbus Rev B addresses (16 bits) - not verified */
@@ -321,6 +348,43 @@ WRITE32_MEMBER (mvme162_state::bootvect_w){
 	m_sysram[offset % sizeof(m_sysram)] &= ~mem_mask;
 	m_sysram[offset % sizeof(m_sysram)] |= (data & mem_mask);
 	m_sysrom = &m_sysram[0]; // redirect all upcomming accesses to masking RAM until reset.
+}
+
+#if SCSI
+WRITE_LINE_MEMBER( mvme162_state::scsi_irq )
+{
+	update_irq(IRQ_SCSI, state); // TODO: The IRQ level is programmable so need to check bits 0-2 of MCchip register 0xFFF4202C
+}
+#endif
+
+IRQ_CALLBACK_MEMBER(mvme162_state::irq_callback)
+{
+	UINT8 vector = 0;
+
+#if SCSI
+	if (m_irq_status & (1 << IRQ_SCSI))
+	{
+		vector = 0;
+	}
+	else
+	{
+		fatalerror("Unknown IRQ (m_irq_status = %x)", m_irq_status);
+	}
+#endif
+
+	return vector;
+}
+
+void mvme162_state::update_irq(UINT32 which, UINT32 state)
+{
+	UINT32 mask = 1 << which;
+
+	if (state)
+		m_irq_status |= mask;
+	else
+		m_irq_status &= ~mask;
+
+	m_maincpu->set_input_line(0, m_irq_status ? HOLD_LINE : CLEAR_LINE);
 }
 
 #if 0 // Disable all special chips to start with
@@ -672,6 +736,32 @@ WRITE16_MEMBER (mvme162_state::vme_a16_w){
 }
 #endif
 
+#if SCSI
+static SLOT_INTERFACE_START( mvme162_scsi_devices )
+#if DISK
+	SLOT_INTERFACE("harddisk", NSCSI_HARDDISK)
+#endif
+	SLOT_INTERFACE_INTERNAL("ncr53c700", NCR53C7XX)
+SLOT_INTERFACE_END
+
+READ32_MEMBER(mvme162_state::ncr53c700_read)
+{
+	return m_maincpu->space(AS_PROGRAM).read_dword(offset, mem_mask);
+}
+
+WRITE32_MEMBER(mvme162_state::ncr53c700_write)
+{
+	m_maincpu->space(AS_PROGRAM).write_dword(offset, data, mem_mask);
+}
+
+static MACHINE_CONFIG_FRAGMENT( ncr53c700 )
+	MCFG_DEVICE_CLOCK(66000000)
+	MCFG_NCR53C7XX_IRQ_HANDLER(DEVWRITELINE(":", mvme162_state, scsi_irq))
+	MCFG_NCR53C7XX_HOST_READ(DEVREAD32(":", mvme162_state, ncr53c700_read))
+	MCFG_NCR53C7XX_HOST_WRITE(DEVWRITE32(":", mvme162_state, ncr53c700_write))
+MACHINE_CONFIG_END
+#endif
+
 /*
  * Machine configuration
  */
@@ -679,10 +769,22 @@ static MACHINE_CONFIG_START (mvme162, mvme162_state)
 	/* basic machine hardware */
 	MCFG_CPU_ADD ("maincpu", M68040, XTAL_25MHz)
 	MCFG_CPU_PROGRAM_MAP (mvme162_mem)
+	MCFG_CPU_IRQ_ACKNOWLEDGE_DRIVER(mvme162_state,irq_callback)
 
 	MCFG_M48T02_ADD("m48t18") /* t08 differs only in accepted voltage levels compared to t18 */
 
 	MCFG_NVRAM_ADD_0FILL("nvram")
+
+#if SCSI
+	MCFG_NSCSI_BUS_ADD("scsibus")
+
+#if DISK
+	MCFG_NSCSI_ADD("scsibus:0", mvme162_scsi_devices, "harddisk", true)
+#endif
+
+	MCFG_NSCSI_ADD("scsibus:7", mvme162_scsi_devices, "ncr53c700", true)
+	MCFG_DEVICE_CARD_MACHINE_CONFIG("ncr53c700", ncr53c700)
+#endif
 
 	/* Terminal Port config */
 	MCFG_SCC85230_ADD("scc", SCC_CLOCK, 0, 0, 0, 0 )
@@ -695,13 +797,12 @@ static MACHINE_CONFIG_START (mvme162, mvme162_state)
 	MCFG_RS232_CTS_HANDLER (DEVWRITELINE ("scc", scc85230_device, ctsa_w))
 
 //	MCFG_SCC85230_ADD("scc2", SCC_CLOCK, 0, 0, 0, 0 )
+
 MACHINE_CONFIG_END
 
 /* ROM definitions */
 ROM_START (mvme162)
 ROM_REGION32_BE(0xfff00000, "maincpu", 0)
-
-ROM_LOAD("162bug4.0.bin", 0xff800000, 0x80000, CRC (56728e5b) SHA1 (0b8b6725c21d8a9048d24857d6acd2b68a7f3ba0))
 
 /*
  * System ROM information
@@ -730,6 +831,12 @@ ROM_LOAD("162bug4.0.bin", 0xff800000, 0x80000, CRC (56728e5b) SHA1 (0b8b6725c21d
  *
  * channel B is identical but resets Channel B of course, SCC2 is also identical 
  */
+	ROM_LOAD("162bug4.0.bin", 0xff800000, 0x80000, CRC (56728e5b) SHA1 (0b8b6725c21d8a9048d24857d6acd2b68a7f3ba0))
+
+#if DISK && SCSI
+	DISK_REGION( "scsibus:0:harddisk:image" )
+	DISK_IMAGE( "mvme162_hdd", 0, NO_DUMP )
+#endif
 ROM_END
 
 /* Driver */
