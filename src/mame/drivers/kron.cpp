@@ -94,6 +94,7 @@
  * - terminal defaults to cyrillic characterset possibly due to setting in EEPROM
  * - http://www.phantom.sannata.ru/forum/index.php?t=5200 - Kron-2 for sale
  * - http://f-picture.net/fp/3b2a0496b981437a9c3f90ed236363c9 - Picture of Kron-2
+ * - http://www.kron.com.ua/ - the company has no info on legacy hardware unfortunality
  *
  */
 
@@ -165,106 +166,33 @@ UINT32 kron180_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap,
 
 	LOGSCREEN(("%s()\n", FUNCNAME));
 	vramad = 0;
-	for (int row = 0; row < 24 * 8; row += 8)
+	for (int row = 0; row < 25 * 8; row += 8)
 	{
 		for (int col = 0; col < 80 * 8; col += 8)
 		{
 			/* look up the character data */
 			charcode = m_vram[vramad];
 			if (VERBOSE && charcode != 0x20 && charcode != 0) LOGSCREEN(("\n %c at X=%d Y=%d: ", charcode, col, row));
-			chardata = &m_char_ptr[(charcode * 8)];
+			chardata = &m_char_ptr[(charcode * 8) + 8];
 			/* plot the character */
 			for (y = 0; y < 8; y++)
 			{
+				chardata--;
 				if (VERBOSE && charcode != 0x20 && charcode != 0) LOGSCREEN(("\n  %02x: ", *chardata));
 				for (x = 0; x < 8; x++)
 				{
 					if (VERBOSE && charcode != 0x20 && charcode != 0) LOGSCREEN((" %02x: ", *chardata));
-					bitmap.pix16(row + y, col + x) = (*chardata & (1 << x)) ? 1 : 0;
+					bitmap.pix16(row + (8 - y), col + (8 - x)) = (*chardata & (1 << x)) ? 1 : 0;
 				}
-				chardata++;
 			}
 			vramad += 2;
 		}
 		if (VERBOSE && charcode != 0x20 && charcode != 0) LOGSCREEN(("\n"));
+		vramad += 96; // Each row is aligned at a 128 byte boundary
 	}
 
 	return 0;
 }
-
-#if 0 
-UINT32 kron180_state::screen_update_kron180(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
-{
-	INT32 x,y,z;
-//,gfx=0;
-//	UINT8 z;
-
-	bitmap.fill(1, cliprect);
-//	int *p = (int *) bitmap.raw_pixptr(0,0);
-//	*p = 0x55;
-
-//	printf("screen is %d x %d pixels @ %d bpp\n", cliprect.right(), cliprect.bottom(), bitmap.bpp());
-
-	for (y = 0; y < 24; y++)
-	{
-		for (x = 0; x < 80; x++)
-		{
-			// Why doesn't this fill the screen?
-			for (z = 0; z < 10; z++)
-			{
-				int *p = (int *) bitmap.raw_pixptr(y * 10 + z, x * 10);
-				*p++ = BIT(0xff, 9);
-				*p++ = BIT(0xff, 8);
-				*p++ = BIT(0xff, 7);
-				*p++ = BIT(0xff, 6);
-				*p++ = BIT(0xff, 5);
-				*p++ = BIT(0xff, 4);
-				*p++ = BIT(0xff, 3);
-				*p++ = BIT(0xff, 2);
-				*p++ = BIT(0xff, 1);
-				*p++ = BIT(0xff, 0);
-			}
-		}
-	}
-
-#if 0
-	for (y = 0; y < 24; y++)
-	{
-		UINT16 *p;
-#define CHARS 80
-		for (x = 0; x < CHARS; x++)
-		{
-			p = &bitmap.pix16(y * 256 + x * 2);
-			printf("%c", isalnum(m_videoram[x * 2 + y * 256]) ? m_videoram[x * 2 + y * 256] : ' ');
-
-#if 0
-			if (m_cb2)
-				gfx = m_videoram[ x | (y<<3)];
-#endif
-			gfx = 0xf;
-//			*p = BIT(gfx, 1);
-#if 0
-//			for (z = 0; z < 8; z++)
-//			{
-				*p++ = BIT(gfx, 7);
-				*p++ = BIT(gfx, 6);
-				*p++ = BIT(gfx, 5);
-				*p++ = BIT(gfx, 4);
-				*p++ = BIT(gfx, 3);
-				*p++ = BIT(gfx, 2);
-				*p++ = BIT(gfx, 1);
-				*p++ = BIT(gfx, 0);
-//			}
-#endif
-		}
-		printf("|\n|");
-		p += gfx;
-	}
-	printf("\n-------------------------------------\n");
-#endif
-	return 0;
-}
-#endif
 
 /* Start it up */
 void kron180_state::machine_start ()
@@ -307,8 +235,13 @@ ROM_START (kron180)
 // Last half moved from 0x8000 to 0x0000, works but need to trace A15 from EPROM, probably connected to GND.
 	ROM_LOAD ("kron.bin", 0x000000, 0x8000, CRC (6beed65e) SHA1 (338d6b77349d4d50488a4393bcd4f5fe4190d510))
 
+#if 0
 	ROM_REGION(0x0800, "chargen",0)
 	ROM_LOAD( "e100U506.bin", 0x0000, 0x0800, CRC(fff9f288) SHA1(2dfb3eb551fe1ef67da328f61ef51ae8d1abdfb8) )
+#else
+	ROM_REGION(0x1000, "chargen",0)
+	ROM_LOAD( "cga.chr", 0x0000, 0x1000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd) )
+#endif
 ROM_END
 
 /* Driver */
