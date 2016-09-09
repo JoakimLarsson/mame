@@ -101,17 +101,36 @@
 #include "cpu/z180/z180.h"
 #include "cpu/z80/z80.h"
 
-#define LOG(x) /* x */
+#define VERBOSE 0
+
+#define LOGPRINT(x) do { if (VERBOSE) logerror x; } while (0)
+#define LOG(x) {}
+#define LOGSCAN(x) LOGPRINT(x)
+#define LOGSCREEN(x) {}
+#define RLOG(x) {}
+#define LOGCS(x) {}
+
+#if VERBOSE >= 2
+#define logerror printf
+#endif
+
+#ifdef _MSC_VER
+#define FUNCNAME __func__
+#else
+#define FUNCNAME __PRETTY_FUNCTION__
+#endif
 
 class kron180_state : public driver_device
 {
 public:
 kron180_state(const machine_config &mconfig, device_type type, const char *tag) :
-	driver_device (mconfig, type, tag),
-		m_maincpu (*this, "maincpu"),
-		m_videoram(*this, "videoram") { }
-
-	UINT32 screen_update_kron180(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	driver_device (mconfig, type, tag)
+	,m_maincpu (*this, "maincpu")
+	,m_videoram(*this, "videoram")
+	{ }
+	UINT8 *m_char_ptr;
+	UINT8 *m_vram;
+	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 protected:
 	required_device<cpu_device> m_maincpu;
 	required_shared_ptr<UINT8> m_videoram;
@@ -137,6 +156,43 @@ INPUT_PORTS_END
 
 /* Video */
 
+UINT32 kron180_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
+{
+	int x, y;
+	int vramad;
+	UINT8 *chardata;
+	UINT8 charcode;
+
+	LOGSCREEN(("%s()\n", FUNCNAME));
+	vramad = 0;
+	for (int row = 0; row < 24 * 8; row += 8)
+	{
+		for (int col = 0; col < 80 * 8; col += 8)
+		{
+			/* look up the character data */
+			charcode = m_vram[vramad];
+			if (VERBOSE && charcode != 0x20 && charcode != 0) LOGSCREEN(("\n %c at X=%d Y=%d: ", charcode, col, row));
+			chardata = &m_char_ptr[(charcode * 8)];
+			/* plot the character */
+			for (y = 0; y < 8; y++)
+			{
+				if (VERBOSE && charcode != 0x20 && charcode != 0) LOGSCREEN(("\n  %02x: ", *chardata));
+				for (x = 0; x < 8; x++)
+				{
+					if (VERBOSE && charcode != 0x20 && charcode != 0) LOGSCREEN((" %02x: ", *chardata));
+					bitmap.pix16(row + y, col + x) = (*chardata & (1 << x)) ? 1 : 0;
+				}
+				chardata++;
+			}
+			vramad += 2;
+		}
+		if (VERBOSE && charcode != 0x20 && charcode != 0) LOGSCREEN(("\n"));
+	}
+
+	return 0;
+}
+
+#if 0 
 UINT32 kron180_state::screen_update_kron180(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	INT32 x,y,z;
@@ -208,11 +264,14 @@ UINT32 kron180_state::screen_update_kron180(screen_device &screen, bitmap_ind16 
 #endif
 	return 0;
 }
+#endif
 
 /* Start it up */
 void kron180_state::machine_start ()
 {
 	LOG (logerror ("machine_start\n"));
+	m_char_ptr  = memregion("chargen")->base();
+	m_vram      = (UINT8 *)m_videoram.target();
 }
 
 /*
@@ -227,7 +286,7 @@ static MACHINE_CONFIG_START (kron180, kron180_state)
 	/* video hardware */
 	MCFG_SCREEN_ADD_MONOCHROME("screen", RASTER, rgb_t::green)
 	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_UPDATE_DRIVER(kron180_state, screen_update_kron180)
+	MCFG_SCREEN_UPDATE_DRIVER(kron180_state, screen_update)
 	MCFG_SCREEN_SIZE(80 * 10, 24 * 10)
 	MCFG_SCREEN_VISIBLE_AREA(0, 799, 0, 239)
 	MCFG_SCREEN_PALETTE("palette")
@@ -247,6 +306,9 @@ ROM_START (kron180)
 
 // Last half moved from 0x8000 to 0x0000, works but need to trace A15 from EPROM, probably connected to GND.
 	ROM_LOAD ("kron.bin", 0x000000, 0x8000, CRC (6beed65e) SHA1 (338d6b77349d4d50488a4393bcd4f5fe4190d510))
+
+	ROM_REGION(0x0800, "chargen",0)
+	ROM_LOAD( "e100U506.bin", 0x0000, 0x0800, CRC(fff9f288) SHA1(2dfb3eb551fe1ef67da328f61ef51ae8d1abdfb8) )
 ROM_END
 
 /* Driver */
