@@ -7,11 +7,11 @@
  *  27/10/2015
  *
  * I baught this hardware on Ebay to have something with a Z80 CPU to play with.
- * The hardware is a serial terminal with VGA output and a PC keyboard and was
- * manufactured mid 90:ies by a company from Vinnitsa,Ukraine called KRON. There
- * is a character generator with support for both western and cyrilic characters.
- * The PCB is also filled with chips with cyrrilic characters on but thanks to
- * this page I managed to translate most of them into western TTL logic names:
+ * The hardware is a serial terminal controller with VGA output and a PC keyboard 
+ * and was manufactured mid 90:ies by a company from Vinnitsa,Ukraine called KRON. 
+ * There is a character generator with support for both western and cyrilic characters.
+ * The PCB is also filled with chips with cyrrilic characters on but thanks to this 
+ * page I managed to translate most of them into western TTL logic names:
  *
  * http://ganswijk.home.xs4all.nl/chipdir/soviet/
  *
@@ -156,7 +156,6 @@ static INPUT_PORTS_START (kron180)
 INPUT_PORTS_END
 
 /* Video */
-
 UINT32 kron180_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	int x, y;
@@ -215,12 +214,11 @@ static MACHINE_CONFIG_START (kron180, kron180_state)
 	MCFG_SCREEN_ADD_MONOCHROME("screen", RASTER, rgb_t::green)
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_UPDATE_DRIVER(kron180_state, screen_update)
-	MCFG_SCREEN_SIZE(80 * 10, 24 * 10)
-	MCFG_SCREEN_VISIBLE_AREA(0, 799, 0, 239)
+	MCFG_SCREEN_SIZE(81 * 8, 25 * 8)
+	MCFG_SCREEN_VISIBLE_AREA(0, 647, 0, 199)
 	MCFG_SCREEN_PALETTE("palette")
 
 	MCFG_PALETTE_ADD_MONOCHROME("palette")
-
 MACHINE_CONFIG_END
 
 /* ROM definitions */
@@ -246,4 +244,4 @@ ROM_END
 
 /* Driver */
 /*	  YEAR	NAME		  PARENT  COMPAT   MACHINE		   INPUT	 CLASS			INIT COMPANY				  FULLNAME			FLAGS */
-COMP (1995, kron180,	  0,	  0,	   kron180,		   kron180, driver_device, 0,	"Kron Ltd",				"Kron K-180", MACHINE_IS_SKELETON )
+COMP (1995, kron180,	  0,	  0,	   kron180,		   kron180, driver_device, 0,	"Kron Ltd",				"Kron K-180", MACHINE_NOT_WORKING )
