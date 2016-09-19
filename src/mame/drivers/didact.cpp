@@ -38,10 +38,13 @@
  ****************************************************************************/
 
 #include "emu.h"
-#include "cpu/m6800/m6800.h"
+#include "cpu/m6800/m6800.h" // For mp68a, md6802 and e100
+#include "cpu/m6809/m6809.h" // For candela
 #include "machine/6821pia.h" // For all boards
+#include "machine/6840ptm.h" // For candela
 #include "video/dm9368.h"    // For the mp68a
 #include "machine/74145.h"   // For the md6802 and e100
+// Features
 #include "imagedev/cassette.h"
 #include "bus/rs232/rs232.h"
 // Generated artwork includes
@@ -70,6 +73,8 @@
 
 #define PIA1_TAG "pia1"
 #define PIA2_TAG "pia2"
+#define PIA3_TAG "pia3"
+#define PIA4_TAG "pia4"
 
 /* Didact base class */
 class didact_state : public driver_device
@@ -263,6 +268,14 @@ void md6802_state::machine_reset()
 	m_maincpu->reset();
 }
 
+// This address map is traced from schema
+static ADDRESS_MAP_START( md6802_map, AS_PROGRAM, 8, md6802_state )
+	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_MIRROR(0x1800)
+	AM_RANGE(0xa000, 0xa003) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read, write) AM_MIRROR(0x1ffc)
+	AM_RANGE(0xc000, 0xc003) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read, write) AM_MIRROR(0x1ffc)
+	AM_RANGE(0xe000, 0xe7ff) AM_ROM AM_MIRROR(0x1800) AM_REGION("maincpu", 0xe000)
+ADDRESS_MAP_END
+
 /*
  *  ___________________________________________________________________________________________________________           _____________________________________________________
  * | The Didact Mp68A CPU board, by Anders Andersson 1979                                                      |         |The Didact Mp68A keypad/display  PB6   +oooo+        |
@@ -444,6 +457,15 @@ void mp68a_state::machine_start()
 	save_item(NAME(m_led));
 	save_item(NAME(m_reset));
 }
+
+// This address map is traced from pcb
+static ADDRESS_MAP_START( mp68a_map, AS_PROGRAM, 8, mp68a_state )
+	AM_RANGE(0x0000, 0x00ff) AM_RAM AM_MIRROR(0xf000)
+	AM_RANGE(0x0500, 0x0503) AM_DEVREADWRITE(PIA1_TAG, pia6820_device, read, write) AM_MIRROR(0xf0fc)
+	AM_RANGE(0x0600, 0x0603) AM_DEVREADWRITE(PIA2_TAG, pia6820_device, read, write) AM_MIRROR(0xf0fc)
+	AM_RANGE(0x0700, 0x07ff) AM_RAM AM_MIRROR(0xf000)
+	AM_RANGE(0x0800, 0x0bff) AM_ROM AM_MIRROR(0xf400) AM_REGION("maincpu", 0x0800)
+ADDRESS_MAP_END
 
 /*  __________________________________________________________________________________________________________________________________________
  * | The Didact Esselte 100 CPU board rev1, 14/8 1980                                                                          in-PCB coil     +----
@@ -781,22 +803,55 @@ static ADDRESS_MAP_START( e100_map, AS_PROGRAM, 8, e100_state )
 	AM_RANGE(0xd000, 0xffff) AM_ROM AM_REGION("roms", 0x1000)
 ADDRESS_MAP_END
 
-// This address map is traced from schema
-static ADDRESS_MAP_START( md6802_map, AS_PROGRAM, 8, md6802_state )
-	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_MIRROR(0x1800)
-	AM_RANGE(0xa000, 0xa003) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read, write) AM_MIRROR(0x1ffc)
-	AM_RANGE(0xc000, 0xc003) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read, write) AM_MIRROR(0x1ffc)
-	AM_RANGE(0xe000, 0xe7ff) AM_ROM AM_MIRROR(0x1800) AM_REGION("maincpu", 0xe000)
+/* Candela driver class */
+class candela_state : public didact_state
+{
+public:
+	candela_state(const machine_config &mconfig, device_type type, const char * tag)
+		: didact_state(mconfig, type, tag)
+		,m_maincpu(*this, "maincpu")
+		,m_pia1(*this, PIA1_TAG)
+		,m_pia2(*this, PIA2_TAG)
+		,m_pia3(*this, PIA3_TAG)
+		,m_pia4(*this, PIA4_TAG)
+		,m_ptm(*this, "ptm")
+		,m_io_line5(*this, "LINE5")
+		,m_io_line6(*this, "LINE6")
+		,m_io_line7(*this, "LINE7")
+		,m_io_line8(*this, "LINE8")
+		,m_io_line9(*this, "LINE9")
+		{ }
+	required_device<cpu_device> m_maincpu;
+	virtual void machine_reset() override { m_maincpu->reset(); LOG(("--->%s()\n", FUNCNAME)); };
+	virtual void machine_start() override;
+protected:
+	required_device<pia6821_device> m_pia1;
+	required_device<pia6821_device> m_pia2;
+	required_device<pia6821_device> m_pia3;
+	required_device<pia6821_device> m_pia4;
+	required_device<ptm6840_device> m_ptm;
+	required_ioport m_io_line5;
+	required_ioport m_io_line6;
+	required_ioport m_io_line7;
+	required_ioport m_io_line8;
+	required_ioport m_io_line9;
+};
+
+void candela_state::machine_start()
+{
+	LOG(("%s()\n", FUNCNAME));
+}
+
+// 
+static ADDRESS_MAP_START( candela_map, AS_PROGRAM, 8, candela_state )
+//	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_MIRROR(0x1800)
+//	AM_RANGE(0xa000, 0xa003) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read, write) AM_MIRROR(0x1ffc)
+//	AM_RANGE(0xc000, 0xc003) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read, write) AM_MIRROR(0x1ffc)
+//	AM_RANGE(0xe000, 0xe7ff) AM_ROM AM_MIRROR(0x1800) AM_REGION("maincpu", 0xe000)
 ADDRESS_MAP_END
 
-// This address map is traced from pcb
-static ADDRESS_MAP_START( mp68a_map, AS_PROGRAM, 8, mp68a_state )
-	AM_RANGE(0x0000, 0x00ff) AM_RAM AM_MIRROR(0xf000)
-	AM_RANGE(0x0500, 0x0503) AM_DEVREADWRITE(PIA1_TAG, pia6820_device, read, write) AM_MIRROR(0xf0fc)
-	AM_RANGE(0x0600, 0x0603) AM_DEVREADWRITE(PIA2_TAG, pia6820_device, read, write) AM_MIRROR(0xf0fc)
-	AM_RANGE(0x0700, 0x07ff) AM_RAM AM_MIRROR(0xf000)
-	AM_RANGE(0x0800, 0x0bff) AM_ROM AM_MIRROR(0xf400) AM_REGION("maincpu", 0x0800)
-ADDRESS_MAP_END
+static INPUT_PORTS_START( candela )
+INPUT_PORTS_END
 
 /* Input ports
  * Four e100 keys are not mapped yet,
@@ -1022,6 +1077,18 @@ TIMER_DEVICE_CALLBACK_MEMBER(didact_state::scan_artwork)
 	}
 }
 
+static MACHINE_CONFIG_START( candela, candela_state )
+	MCFG_CPU_ADD("maincpu", M6809, XTAL_2MHz) // Check crystal!
+	MCFG_CPU_PROGRAM_MAP(candela_map)
+
+	MCFG_DEVICE_ADD(PIA1_TAG, PIA6821, 0) // CPU board
+	MCFG_DEVICE_ADD(PIA2_TAG, PIA6821, 0) // CPU board
+	MCFG_DEVICE_ADD(PIA3_TAG, PIA6821, 0) // ROM board
+	MCFG_DEVICE_ADD(PIA4_TAG, PIA6821, 0) // ROM board
+
+	MCFG_DEVICE_ADD("ptm", PTM6840, 0)
+MACHINE_CONFIG_END
+
 static MACHINE_CONFIG_START( e100, e100_state )
 	MCFG_CPU_ADD("maincpu", M6802, XTAL_4MHz)
 	MCFG_CPU_PROGRAM_MAP(e100_map)
@@ -1177,6 +1244,9 @@ static MACHINE_CONFIG_START( mp68a, mp68a_state )
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("artwork_timer", mp68a_state, scan_artwork, attotime::from_hz(10))
 MACHINE_CONFIG_END
 
+ROM_START( candela ) // Needs dump
+ROM_END
+
 /* ROM sets from Didact was not versioned in general, so the numbering are just assumptions */
 ROM_START( e100 )
 	ROM_REGION(0x4000, "roms", 0)
@@ -1217,3 +1287,4 @@ ROM_END
 COMP( 1979, mp68a,      0,          0,      mp68a,      mp68a,  driver_device,   0,          "Didact AB",        "mp68a",           MACHINE_NO_SOUND_HW )
 COMP( 1982, e100,       0,          0,      e100,       e100,   driver_device,   0,          "Didact AB",        "Esselte 100",     MACHINE_NO_SOUND_HW )
 COMP( 1983, md6802,     0,          0,      md6802,     md6802, driver_device,   0,          "Didact AB",        "Mikrodator 6802", MACHINE_NO_SOUND_HW )
+COMP( 198?, candela,    0,          0,      candela,    candela,driver_device,   0,          "Didact AB",        "Candela CAN09",   MACHINE_NOT_WORKING )
