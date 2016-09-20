@@ -42,6 +42,7 @@
 #include "cpu/m6809/m6809.h" // For candela
 #include "machine/6821pia.h" // For all boards
 #include "machine/6840ptm.h" // For candela
+#include "machine/6850acia.h"// For candela
 #include "video/dm9368.h"    // For the mp68a
 #include "machine/74145.h"   // For the md6802 and e100
 // Features
@@ -815,6 +816,7 @@ public:
 		,m_pia3(*this, PIA3_TAG)
 		,m_pia4(*this, PIA4_TAG)
 		,m_ptm(*this, "ptm")
+		,m_acia(*this, "acia")
 		,m_io_line5(*this, "LINE5")
 		,m_io_line6(*this, "LINE6")
 		,m_io_line7(*this, "LINE7")
@@ -830,6 +832,7 @@ protected:
 	required_device<pia6821_device> m_pia3;
 	required_device<pia6821_device> m_pia4;
 	required_device<ptm6840_device> m_ptm;
+	required_device<acia6850_device> m_acia;
 	required_ioport m_io_line5;
 	required_ioport m_io_line6;
 	required_ioport m_io_line7;
@@ -1087,6 +1090,9 @@ static MACHINE_CONFIG_START( candela, candela_state )
 	MCFG_DEVICE_ADD(PIA4_TAG, PIA6821, 0) // ROM board
 
 	MCFG_DEVICE_ADD("ptm", PTM6840, 0)
+
+	MCFG_DEVICE_ADD ("acia", ACIA6850, 0)
+
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( e100, e100_state )
