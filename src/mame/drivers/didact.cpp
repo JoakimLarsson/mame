@@ -878,8 +878,8 @@ static ADDRESS_MAP_START( can09p_map, AS_PROGRAM, 8, can09p_state )
 	AM_RANGE(0xa000, 0xafff) AM_RAM // There is 32 Kb of RAM but only A000-AFFF is used so far
 	AM_RANGE(0xb100, 0xb101) AM_DEVREADWRITE("acia", acia6850_device, status_r, control_w)
 	AM_RANGE(0xb102, 0xb103) AM_DEVREADWRITE("acia", acia6850_device, data_r, data_w)
-	AM_RANGE(0xb110, 0xb113) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read, write)
-	AM_RANGE(0xb120, 0xb123) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read, write)
+	AM_RANGE(0xb110, 0xb113) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read_alt, write_alt)
+	AM_RANGE(0xb120, 0xb123) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read_alt, write_alt)
 	AM_RANGE(0xb130, 0xb137) AM_DEVREADWRITE("ptm", ptm6840_device, read, write)
 	AM_RANGE(0xB200, 0xffff) AM_ROM AM_REGION("roms", 0x3200)
 ADDRESS_MAP_END
@@ -1120,15 +1120,32 @@ static MACHINE_CONFIG_START( can09p, can09p_state )
 	MCFG_CPU_ADD("maincpu", M6809, XTAL_2MHz) // Check crystal!
 	MCFG_CPU_PROGRAM_MAP(can09p_map)
 
+	/* --PIA inits----------------------- */
 	MCFG_DEVICE_ADD(PIA1_TAG, PIA6821, 0) // CPU board
+	/* 0xE1FB 0xB112 (PIA1 Control A) = 0x00 - Channel A IRQ disabled */
+	/* 0xE1FB 0xB113 (PIA1 Control B) = 0x00 - Channel B IRQ disabled */
+	/* 0xE203 0xB110 (PIA1 DDR A)     = 0x00 - Port A all inputs */
+	/* 0xE203 0xB111 (PIA1 DDR B)     = 0x7F - Port B mixed mode */ //CA2 is high and IRQ enabled (data=0x7F!?)*/ 
+	/* 0xE20A 0xB112 (PIA1 Control A) = 0x05 - IRQ A enabled on falling transition on CA2 */
+	/* 0xE20A 0xB113 (PIA1 Control B) = 0x34 - CB2 is low and lock DDRB */
+	/* 0xE20E 0xB111 (PIA1 port B)    = 0x10 - Data to port B */
 	MCFG_DEVICE_ADD(PIA2_TAG, PIA6821, 0) // CPU board
+	/* 0xE212 0xB122 (PIA2 Control A) = 0x00 - Channel A IRQ disabled */
+	/* 0xE212 0xB123 (PIA2 Control B) = 0x00 - Channel B IRQ disabled */
+	/* 0xE215 0xB120 (PIA2 DDR A)     = 0x00 - Port A all inputs */
+	/* 0xE215 0xB121 (PIA2 DDR B)     = 0xFF - Port B all outputs */
+	/* 0xE21A 0xB122 (PIA2 Control A) = 0x34 - CA2 is low and lock DDRB */
+	/* 0xE21A 0xB123 (PIA2 Control B) = 0x34 - CB2 is low and lock DDRB */
 	MCFG_DEVICE_ADD(PIA3_TAG, PIA6821, 0) // ROM board
 	MCFG_DEVICE_ADD(PIA4_TAG, PIA6821, 0) // ROM board
 
 	MCFG_DEVICE_ADD("ptm", PTM6840, 0)
 
 	MCFG_DEVICE_ADD ("acia", ACIA6850, 0)
-
+/*
+MC6850 ':acia' Control: 03
+MC6850 ':acia' Control: 15
+*/
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( e100, e100_state )
