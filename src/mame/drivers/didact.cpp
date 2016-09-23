@@ -804,11 +804,35 @@ static ADDRESS_MAP_START( e100_map, AS_PROGRAM, 8, e100_state )
 	AM_RANGE(0xd000, 0xffff) AM_ROM AM_REGION("roms", 0x1000)
 ADDRESS_MAP_END
 
+/*
+ *         The CAN09 v1.4 CPU board                                                  The CAN09 ROM and AD/DA board
+ *       +-------------------------------------------------------------+  ___     +----------------------------------------------------------+
+ *      +-+  +---+   +------+ +-----++-----+     +-----++-----+        |_|   |   +-+   +-----++-----++-----++-----++-----++-----+            |
+ *      | |  |RST|   |      | | ROM ||     |+---+| RAM ||     | +--+   | |   |   | |J2 |PROM7||PROM6||PROM5||PROM4||PROM3||PROM2|            |
+ *      | |  +---+   |      | |27256||62256||74 ||58256||62256| |CN|   | |   |   | |   |empty||empty||empty||empty||empty||empty|            |
+ *      | |      O   | 6809 | | MON ||empty||245||     ||empty| |J7|   | |   |   | |  o|     ||     ||     ||     ||     ||     |            |
+ *      | |    J2O   |      | | 58B ||     ||   ||     ||     | |  |   | |   |   | |  o|     ||     ||     ||     ||     ||     |            |
+ *      | |      O   |      | |     ||     ||   ||     ||     | |  |   | |   |   | |  o+-----++-----++-----++-----++-----++-----+            |
+ *      | |      O   |      | +-----++-----++---++-----++-----+ +--+   | |EUR|   | |  o        ______                                        |
+ *      | |J1    O   |      |      +-------+         +-----+ +-----+   | |   |   | |  oJ1     | 74138|                                       |
+ *      +-+      O   |      |      | 74138 |         |     | |     |   | |CN |   +-+  o       +------+                                       |
+ *      +-+      O +-+------+      +-------+  +-----+|     | |     |   | |J4 |  J4|8  o   +-----------------+  +-----------------+           |
+ *      | |J6    O |74165 |        +--++-----+|     || PIA | | PIA |   | |   |    |8  o   | PIA 6821        |  | PIA 6821        |           |
+ *      | |      O +------+   +---+|CN||     || PTM || 6821| | 6821|   | |   |   +-+  o   |                 |  |                 |           |
+ *      | |      O  VR1 VR2   |82S||J8||     || 6840||     | |     |   | |   |   | |  o   +-----------------+  +-----------------+           |
+ *      | |      O +------+   |123||  ||ACIA ||     ||     | |     |   | |   |   | |  o   +-------++-------+   +--------+   +--------+       |
+ *      +-+      O |7405  |   |   ||  || 6850||     ||     | |     |   | |   |   | |  o   |MPD1603|| 14051 |   | TL501  |   | 74LS02 |       |
+ *      _===       +------+   ++--++--+|     ||     ||     | |     |   | |   |   | |      +-------++-------+   +--------+   +--------+       |
+ * comp _|=        |74132 |    | 7400 |+----+++-----++-----+ +-----+   |_|   |   | |J3       +-------+       +---------+  +----------+       |
+ * video ===       +------+    +------+     |MAX232 |                  | |___|   +-+         |MC34004|       |AD7528   |  |ADC0820   |       |
+ *       +----------------------------------+-------+------------------+          +----------+-------+-------+---------+--+----------+-------+
+ *
+ */
 /* Candela driver class */
-class candela_state : public didact_state
+class can09p_state : public didact_state
 {
 public:
-	candela_state(const machine_config &mconfig, device_type type, const char * tag)
+	can09p_state(const machine_config &mconfig, device_type type, const char * tag)
 		: didact_state(mconfig, type, tag)
 		,m_maincpu(*this, "maincpu")
 		,m_pia1(*this, PIA1_TAG)
@@ -817,11 +841,13 @@ public:
 		,m_pia4(*this, PIA4_TAG)
 		,m_ptm(*this, "ptm")
 		,m_acia(*this, "acia")
+#if 0
 		,m_io_line5(*this, "LINE5")
 		,m_io_line6(*this, "LINE6")
 		,m_io_line7(*this, "LINE7")
 		,m_io_line8(*this, "LINE8")
 		,m_io_line9(*this, "LINE9")
+#endif
 		{ }
 	required_device<cpu_device> m_maincpu;
 	virtual void machine_reset() override { m_maincpu->reset(); LOG(("--->%s()\n", FUNCNAME)); };
@@ -833,27 +859,37 @@ protected:
 	required_device<pia6821_device> m_pia4;
 	required_device<ptm6840_device> m_ptm;
 	required_device<acia6850_device> m_acia;
+#if 0
 	required_ioport m_io_line5;
 	required_ioport m_io_line6;
 	required_ioport m_io_line7;
 	required_ioport m_io_line8;
 	required_ioport m_io_line9;
+#endif
 };
 
-void candela_state::machine_start()
+void can09p_state::machine_start()
 {
 	LOG(("%s()\n", FUNCNAME));
 }
 
-// 
-static ADDRESS_MAP_START( candela_map, AS_PROGRAM, 8, candela_state )
-//	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_MIRROR(0x1800)
-//	AM_RANGE(0xa000, 0xa003) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read, write) AM_MIRROR(0x1ffc)
-//	AM_RANGE(0xc000, 0xc003) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read, write) AM_MIRROR(0x1ffc)
-//	AM_RANGE(0xe000, 0xe7ff) AM_ROM AM_MIRROR(0x1800) AM_REGION("maincpu", 0xe000)
+// traced and guessed from pcb images and debugger
+static ADDRESS_MAP_START( can09p_map, AS_PROGRAM, 8, can09p_state )
+	AM_RANGE(0xa000, 0xafff) AM_RAM // There is 32 Kb of RAM but only A000-AFFF is used so far
+	AM_RANGE(0xb100, 0xb101) AM_DEVREADWRITE("acia", acia6850_device, status_r, control_w)
+	AM_RANGE(0xb102, 0xb103) AM_DEVREADWRITE("acia", acia6850_device, data_r, data_w)
+	AM_RANGE(0xb110, 0xb113) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read, write)
+	AM_RANGE(0xb120, 0xb123) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read, write)
+	AM_RANGE(0xb130, 0xb137) AM_DEVREADWRITE("ptm", ptm6840_device, read, write)
+	AM_RANGE(0xB200, 0xffff) AM_ROM AM_REGION("roms", 0x3200)
 ADDRESS_MAP_END
 
-static INPUT_PORTS_START( candela )
+static INPUT_PORTS_START( can09p )
+	PORT_START("LINE0")
+	PORT_START("LINE1")
+	PORT_START("LINE2")
+	PORT_START("LINE3")
+	PORT_START("LINE4")
 INPUT_PORTS_END
 
 /* Input ports
@@ -1080,9 +1116,9 @@ TIMER_DEVICE_CALLBACK_MEMBER(didact_state::scan_artwork)
 	}
 }
 
-static MACHINE_CONFIG_START( candela, candela_state )
+static MACHINE_CONFIG_START( can09p, can09p_state )
 	MCFG_CPU_ADD("maincpu", M6809, XTAL_2MHz) // Check crystal!
-	MCFG_CPU_PROGRAM_MAP(candela_map)
+	MCFG_CPU_PROGRAM_MAP(can09p_map)
 
 	MCFG_DEVICE_ADD(PIA1_TAG, PIA6821, 0) // CPU board
 	MCFG_DEVICE_ADD(PIA2_TAG, PIA6821, 0) // CPU board
@@ -1250,7 +1286,9 @@ static MACHINE_CONFIG_START( mp68a, mp68a_state )
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("artwork_timer", mp68a_state, scan_artwork, attotime::from_hz(10))
 MACHINE_CONFIG_END
 
-ROM_START( candela ) // Needs dump
+ROM_START( can09p )
+	ROM_REGION(0x10000, "roms", 0)
+	ROM_LOAD( "IC2-MON58B-c8d7.bin", 0x0000, 0x8000, CRC(7eabfec6) SHA1(e08e2349035389b441227df903aa54f4c1e4a337) )
 ROM_END
 
 /* ROM sets from Didact was not versioned in general, so the numbering are just assumptions */
@@ -1293,4 +1331,4 @@ ROM_END
 COMP( 1979, mp68a,      0,          0,      mp68a,      mp68a,  driver_device,   0,          "Didact AB",        "mp68a",           MACHINE_NO_SOUND_HW )
 COMP( 1982, e100,       0,          0,      e100,       e100,   driver_device,   0,          "Didact AB",        "Esselte 100",     MACHINE_NO_SOUND_HW )
 COMP( 1983, md6802,     0,          0,      md6802,     md6802, driver_device,   0,          "Didact AB",        "Mikrodator 6802", MACHINE_NO_SOUND_HW )
-COMP( 198?, candela,    0,          0,      candela,    candela,driver_device,   0,          "Didact AB",        "Candela CAN09",   MACHINE_NOT_WORKING )
+COMP( 1984, can09p,     0,          0,      can09p,     can09p, driver_device,   0,          "Didact AB",        "Candela CAN09 prototype",   MACHINE_NOT_WORKING | MACHINE_NO_SOUND )
