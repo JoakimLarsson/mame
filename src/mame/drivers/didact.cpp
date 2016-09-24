@@ -52,12 +52,12 @@
 #include "mp68a.lh"
 #include "md6802.lh"
 
-#define VERBOSE 0
+#define VERBOSE 2
 
 #define LOGPRINT(x) do { if (VERBOSE) logerror x; } while (0)
-#define LOG(x) {}
+#define LOG(x) LOGPRINT(x) 
 #define LOGSCAN(x) {}
-#define LOGSER(x) LOGPRINT(x)
+#define LOGSER(x) {}
 #define LOGSCREEN(x) {}
 #define RLOG(x) {}
 #define LOGCS(x) {}
@@ -852,6 +852,11 @@ public:
 	required_device<cpu_device> m_maincpu;
 	virtual void machine_reset() override { m_maincpu->reset(); LOG(("--->%s()\n", FUNCNAME)); };
 	virtual void machine_start() override;
+	DECLARE_READ8_MEMBER( pia1_A_r );
+	DECLARE_READ8_MEMBER( pia1_B_r );
+	DECLARE_WRITE8_MEMBER( pia1_B_w );
+	DECLARE_WRITE_LINE_MEMBER( pia1_cb2_w);
+	DECLARE_WRITE_LINE_MEMBER( pia2_cb2_w);
 protected:
 	required_device<pia6821_device> m_pia1;
 	required_device<pia6821_device> m_pia2;
@@ -873,14 +878,41 @@ void can09p_state::machine_start()
 	LOG(("%s()\n", FUNCNAME));
 }
 
+READ8_MEMBER( can09p_state::pia1_A_r )
+{
+	LOG(("%s()\n", FUNCNAME));
+	return 0;
+}
+
+READ8_MEMBER( can09p_state::pia1_B_r )
+{
+	LOG(("%s()\n", FUNCNAME));
+	return 0;
+}
+
+WRITE8_MEMBER( can09p_state::pia1_B_w )
+{
+	LOG(("%s(%02x)\n", FUNCNAME, data));
+}
+
+WRITE_LINE_MEMBER(can09p_state::pia1_cb2_w)
+{
+	LOG(("%s(%02x)\n", FUNCNAME, state));
+}
+
+WRITE_LINE_MEMBER(can09p_state::pia2_cb2_w)
+{
+	LOG(("%s(%02x)\n", FUNCNAME, state));
+}
+
 // traced and guessed from pcb images and debugger
 static ADDRESS_MAP_START( can09p_map, AS_PROGRAM, 8, can09p_state )
-	AM_RANGE(0xa000, 0xafff) AM_RAM // There is 32 Kb of RAM but only A000-AFFF is used so far
+	AM_RANGE(0x3000, 0xafff) AM_RAM
+	AM_RANGE(0xb130, 0xb137) AM_DEVREADWRITE("ptm", ptm6840_device, read, write)
 	AM_RANGE(0xb100, 0xb101) AM_DEVREADWRITE("acia", acia6850_device, status_r, control_w)
 	AM_RANGE(0xb102, 0xb103) AM_DEVREADWRITE("acia", acia6850_device, data_r, data_w)
 	AM_RANGE(0xb110, 0xb113) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read_alt, write_alt)
 	AM_RANGE(0xb120, 0xb123) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read_alt, write_alt)
-	AM_RANGE(0xb130, 0xb137) AM_DEVREADWRITE("ptm", ptm6840_device, read, write)
 	AM_RANGE(0xB200, 0xffff) AM_ROM AM_REGION("roms", 0x3200)
 ADDRESS_MAP_END
 
@@ -1122,14 +1154,19 @@ static MACHINE_CONFIG_START( can09p, can09p_state )
 
 	/* --PIA inits----------------------- */
 	MCFG_DEVICE_ADD(PIA1_TAG, PIA6821, 0) // CPU board
+	MCFG_PIA_READPA_HANDLER(READ8(can09p_state, pia1_A_r))
+	MCFG_PIA_READPB_HANDLER(READ8(can09p_state, pia1_B_r))
+	MCFG_PIA_WRITEPB_HANDLER(WRITE8(can09p_state, pia1_B_w))
+	MCFG_PIA_CB2_HANDLER(WRITELINE(can09p_state, pia1_cb2_w))
 	/* 0xE1FB 0xB112 (PIA1 Control A) = 0x00 - Channel A IRQ disabled */
 	/* 0xE1FB 0xB113 (PIA1 Control B) = 0x00 - Channel B IRQ disabled */
 	/* 0xE203 0xB110 (PIA1 DDR A)     = 0x00 - Port A all inputs */
-	/* 0xE203 0xB111 (PIA1 DDR B)     = 0x7F - Port B mixed mode */ //CA2 is high and IRQ enabled (data=0x7F!?)*/ 
+	/* 0xE203 0xB111 (PIA1 DDR B)     = 0x7F - Port B mixed mode */
 	/* 0xE20A 0xB112 (PIA1 Control A) = 0x05 - IRQ A enabled on falling transition on CA2 */
 	/* 0xE20A 0xB113 (PIA1 Control B) = 0x34 - CB2 is low and lock DDRB */
 	/* 0xE20E 0xB111 (PIA1 port B)    = 0x10 - Data to port B */
 	MCFG_DEVICE_ADD(PIA2_TAG, PIA6821, 0) // CPU board
+	MCFG_PIA_CB2_HANDLER(WRITELINE(can09p_state, pia2_cb2_w))
 	/* 0xE212 0xB122 (PIA2 Control A) = 0x00 - Channel A IRQ disabled */
 	/* 0xE212 0xB123 (PIA2 Control B) = 0x00 - Channel B IRQ disabled */
 	/* 0xE215 0xB120 (PIA2 DDR A)     = 0x00 - Port A all inputs */
