@@ -43,6 +43,7 @@
 #include "machine/6821pia.h" // For all boards
 #include "machine/6840ptm.h" // For candela
 #include "machine/6850acia.h"// For candela
+#include "machine/clock.h"   // For candela
 #include "video/dm9368.h"    // For the mp68a
 #include "machine/74145.h"   // For the md6802 and e100
 // Features
@@ -808,16 +809,16 @@ ADDRESS_MAP_END
  *         The CAN09 v1.4 CPU board                                                  The CAN09 ROM and AD/DA board
  *       +-------------------------------------------------------------+  ___     +----------------------------------------------------------+
  *      +-+  +---+   +------+ +-----++-----+     +-----++-----+        |_|   |   +-+   +-----++-----++-----++-----++-----++-----+            |
- *      | |  |RST|   |      | | ROM ||     |+---+| RAM ||     | +--+   | |   |   | |J2 |PROM7||PROM6||PROM5||PROM4||PROM3||PROM2|            |
- *      | |  +---+   |      | |27256||62256||74 ||58256||62256| |CN|   | |   |   | |   |empty||empty||empty||empty||empty||empty|            |
- *      | |      O   | 6809 | | MON ||empty||245||     ||empty| |J7|   | |   |   | |  o|     ||     ||     ||     ||     ||     |            |
- *      | |    J2O   |      | | 58B ||     ||   ||     ||     | |  |   | |   |   | |  o|     ||     ||     ||     ||     ||     |            |
- *      | |      O   |      | |     ||     ||   ||     ||     | |  |   | |   |   | |  o+-----++-----++-----++-----++-----++-----+            |
- *      | |      O   |      | +-----++-----++---++-----++-----+ +--+   | |EUR|   | |  o        ______                                        |
- *      | |J1    O   |      |      +-------+         +-----+ +-----+   | |   |   | |  oJ1     | 74138|                                       |
- *      +-+      O   |      |      | 74138 |         |     | |     |   | |CN |   +-+  o       +------+                                       |
- *      +-+      O +-+------+      +-------+  +-----+|     | |     |   | |J4 |  J4|8  o   +-----------------+  +-----------------+           |
- *      | |J6    O |74165 |        +--++-----+|     || PIA | | PIA |   | |   |    |8  o   | PIA 6821        |  | PIA 6821        |           |
+ *      | |  |RST|   |      | | ROM ||     |+---+| RAM ||     | +--+   | |   |   | |J2 |PROM7||PROM6||PROM5||PROM4||PROM3||PROM2|  +---+     |
+ *      | |  +---+   |      | |27256||62256||74 ||58256||62256| |CN|   | |   |   | |   |empty||empty||empty||empty||empty||empty|  |74 |     |
+ *      | |      O   | 6809 | | MON ||empty||245||     ||empty| |J7|   | |   |   | |  o|     ||     ||     ||     ||     ||     |  |393|     |
+ *      | |    J2O   |      | | 58B ||     ||   ||     ||     | |  |   | |   |   | |  o|     ||     ||     ||     ||     ||     |  |   |     |
+ *      | |      O   |      | |     ||     ||   ||     ||     | |  |   | |   |   | |  o+-----++-----++-----++-----++-----++-----+  +---+     |
+ *      | |      O   |      | +-----++-----++---++-----++-----+ +--+   | |EUR|   | |  o        ______                              +---+     |
+ *      | |J1    O   |      |      +-------+         +-----+ +-----+   | |   |   | |  oJ1     | 74138|                             |74 |     |
+ *      +-+      O   |      |      | 74138 |         |     | |     |   | |CN |   +-+  o       +------+                             |393|     |
+ *      +-+      O +-+------+      +-------+  +-----+|     | |     |   | |J4 |  J4|8  o   +-----------------+  +-----------------+ |   |     |
+ *      | |J6    O |74165 |        +--++-----+|     || PIA | | PIA |   | |   |    |8  o   | PIA 6821        |  | PIA 6821        | +---+     |
  *      | |      O +------+   +---+|CN||     || PTM || 6821| | 6821|   | |   |   +-+  o   |                 |  |                 |           |
  *      | |      O  VR1 VR2   |82S||J8||     || 6840||     | |     |   | |   |   | |  o   +-----------------+  +-----------------+           |
  *      | |      O +------+   |123||  ||ACIA ||     ||     | |     |   | |   |   | |  o   +-------++-------+   +--------+   +--------+       |
@@ -857,6 +858,7 @@ public:
 	DECLARE_WRITE8_MEMBER( pia1_B_w );
 	DECLARE_WRITE_LINE_MEMBER( pia1_cb2_w);
 	DECLARE_WRITE_LINE_MEMBER( pia2_cb2_w);
+	DECLARE_WRITE_LINE_MEMBER (write_acia_clock);
 protected:
 	required_device<pia6821_device> m_pia1;
 	required_device<pia6821_device> m_pia2;
@@ -905,14 +907,19 @@ WRITE_LINE_MEMBER(can09p_state::pia2_cb2_w)
 	LOG(("%s(%02x)\n", FUNCNAME, state));
 }
 
+WRITE_LINE_MEMBER (can09p_state::write_acia_clock){
+		m_acia->write_txc (state);
+		m_acia->write_rxc (state);
+}
+
 // traced and guessed from pcb images and debugger
 static ADDRESS_MAP_START( can09p_map, AS_PROGRAM, 8, can09p_state )
 	AM_RANGE(0x3000, 0xafff) AM_RAM
-	AM_RANGE(0xb130, 0xb137) AM_DEVREADWRITE("ptm", ptm6840_device, read, write)
-	AM_RANGE(0xb100, 0xb101) AM_DEVREADWRITE("acia", acia6850_device, status_r, control_w)
-	AM_RANGE(0xb102, 0xb103) AM_DEVREADWRITE("acia", acia6850_device, data_r, data_w)
+	AM_RANGE(0xb100, 0xb100) AM_DEVREADWRITE("acia", acia6850_device, status_r, control_w)
+	AM_RANGE(0xb101, 0xb102) AM_DEVREADWRITE("acia", acia6850_device, data_r, data_w)
 	AM_RANGE(0xb110, 0xb113) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read_alt, write_alt)
 	AM_RANGE(0xb120, 0xb123) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read_alt, write_alt)
+	AM_RANGE(0xb130, 0xb137) AM_DEVREADWRITE("ptm", ptm6840_device, read, write)
 	AM_RANGE(0xB200, 0xffff) AM_ROM AM_REGION("roms", 0x3200)
 ADDRESS_MAP_END
 
@@ -1148,6 +1155,10 @@ TIMER_DEVICE_CALLBACK_MEMBER(didact_state::scan_artwork)
 	}
 }
 
+/* Fake clock values until we figure out how the PTM generates the clocks */
+#define CAN09P_BAUDGEN_CLOCK XTAL_1_8432MHz
+#define CAN09P_ACIA_CLOCK (CAN09P_BAUDGEN_CLOCK / 12)
+
 static MACHINE_CONFIG_START( can09p, can09p_state )
 	MCFG_CPU_ADD("maincpu", M6809, XTAL_2MHz) // Check crystal!
 	MCFG_CPU_PROGRAM_MAP(can09p_map)
@@ -1179,6 +1190,14 @@ static MACHINE_CONFIG_START( can09p, can09p_state )
 	MCFG_DEVICE_ADD("ptm", PTM6840, 0)
 
 	MCFG_DEVICE_ADD ("acia", ACIA6850, 0)
+	MCFG_ACIA6850_TXD_HANDLER (DEVWRITELINE ("rs232", rs232_port_device, write_txd))
+	MCFG_ACIA6850_RTS_HANDLER (DEVWRITELINE ("rs232", rs232_port_device, write_rts))
+	MCFG_RS232_PORT_ADD("rs232", default_rs232_devices, nullptr)
+	MCFG_RS232_RXD_HANDLER (DEVWRITELINE ("acia", acia6850_device, write_rxd))
+	MCFG_RS232_CTS_HANDLER (DEVWRITELINE ("acia", acia6850_device, write_cts))
+
+	MCFG_DEVICE_ADD ("acia_clock", CLOCK, CAN09P_ACIA_CLOCK)
+	MCFG_CLOCK_SIGNAL_HANDLER (WRITELINE (can09p_state, write_acia_clock))
 /*
 MC6850 ':acia' Control: 03
 MC6850 ':acia' Control: 15
