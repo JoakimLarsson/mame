@@ -9,22 +9,29 @@
  * Esselte 100 and the Candela computer for the swedish schools to educate the students in assembly programming
  * and BASIC for electro mechanical applications such as stepper motors, simple process control, buttons
  * and LED:s. Didact designs were marketed by Esselte Studium to the swedish schools. The Candela computer
- * was designed to be the big breakthough and was based on OS9 but lost the battle of the swedish schools to
- * the Compis computer by TeleNova which was based on CP/M initially but later both lost to IBM PC. There was
- * also an Esselte 1000 which was an educational package based on Apple II plus software and litterature.
+ * was designed to be the big breakthough and developed by Candela Data AB, "a Didact Company". The Candela 
+ * system was based around a main unit that could run OS-9 or Flex and a terminal unit that had a propietary 
+ * software including CDBASIC. The Candela system lost the battle of the swedish schools to
+ * the Compis computer by TeleNova which was based on CP/M initially.  Later both lost to IBM PC as we know.
+ * Candela Data continued to sell their system to the swedish industry without major successes despite great
+ * innovation and spririt. 
+ *
+ * The Esselte 1000 was an educational package based on Apple II plus software and litterature
+ * but the relation to Didact is at this point unknown so it is probably a pure Esselte software production.
  *
  * Misc links about the boards supported by this driver.
  *-----------------------------------------------------
+ * http://frakaday.blogspot.com/p/candela.html
  * http://elektronikforumet.com/forum/viewtopic.php?f=11&t=51424
  * http://kilroy71.fastmail.fm/gallery/Miscellaneous/20120729_019.jpg
  * http://elektronikforumet.com/forum/download/file.php?id=63988&mode=view
  * http://elektronikforumet.com/forum/viewtopic.php?f=2&t=79576&start=150#p1203915
  *
  *  TODO:
- *  Didact designs:    mp68a, md6802, Modulab, Esselte 100, Candela
+ *  Didact designs:    mp68a, md6802, Modulab, Esselte 100, can09p, can09
  * --------------------------------------------------------------------------
- *  - Add PCB layouts   OK     OK				 OK
- *  - Dump ROM:s,       OK     OK				 rev2
+ *  - Add PCB layouts   OK     OK				 OK          OK
+ *  - Dump ROM:s,       OK     OK				 rev2        OK      OK
  *  - Keyboard          OK     OK				 rev2
  *  - Display/CRT       OK     OK				 OK
  *  - Clickable Artwork RQ     RQ
@@ -33,7 +40,7 @@
  *  - Expansion bus
  *  - Expansion overlay
  *  - Interrupts        OK                       OK
- *  - Serial                   XX                XX
+ *  - Serial                   XX                XX          OK
  *   XX = needs debug
  ****************************************************************************/
 
@@ -829,7 +836,17 @@ ADDRESS_MAP_END
  *       +----------------------------------+-------+------------------+          +----------+-------+-------+---------+--+----------+-------+
  *
  */
-/* Candela driver class */
+/*
+ * TODO:
+ * - Map additional PIA:s on the ROM board
+ * - ROM/RAM paging by using the PIA:s, now static address map but CDBASIC RLOAD doesn't work for instance
+ * - Vram and screen
+ * - Keyboard
+ * - LCD
+ * - AD/DA support for related BASIC functions
+ * - Promett rom cartridge support
+ */
+/* Candela prototype driver class */
 class can09p_state : public didact_state
 {
 public:
@@ -913,14 +930,18 @@ WRITE_LINE_MEMBER (can09p_state::write_acia_clock){
 }
 
 // traced and guessed from pcb images and debugger
+// It is very likelly that this is a PIA based dynamic address map, needs more analysis
 static ADDRESS_MAP_START( can09p_map, AS_PROGRAM, 8, can09p_state )
-	AM_RANGE(0x3000, 0xafff) AM_RAM
+	AM_RANGE(0x0000, 0x7fff) AM_ROM AM_REGION("roms", 0)
+	AM_RANGE(0x8000, 0xafff) AM_RAM
 	AM_RANGE(0xb100, 0xb100) AM_DEVREADWRITE("acia", acia6850_device, status_r, control_w)
-	AM_RANGE(0xb101, 0xb102) AM_DEVREADWRITE("acia", acia6850_device, data_r, data_w)
+	AM_RANGE(0xb101, 0xb101) AM_DEVREADWRITE("acia", acia6850_device, data_r, data_w)
 	AM_RANGE(0xb110, 0xb113) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read_alt, write_alt)
 	AM_RANGE(0xb120, 0xb123) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read_alt, write_alt)
 	AM_RANGE(0xb130, 0xb137) AM_DEVREADWRITE("ptm", ptm6840_device, read, write)
-	AM_RANGE(0xB200, 0xffff) AM_ROM AM_REGION("roms", 0x3200)
+	AM_RANGE(0xb200, 0xc1ff) AM_ROM AM_REGION("roms", 0x3200)
+	AM_RANGE(0xc200, 0xdfff) AM_RAM /* Needed for BASIC etc */
+	AM_RANGE(0xe000, 0xffff) AM_ROM AM_REGION("roms", 0x6000)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( can09p )
@@ -1160,7 +1181,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(didact_state::scan_artwork)
 #define CAN09P_ACIA_CLOCK (CAN09P_BAUDGEN_CLOCK / 12)
 
 static MACHINE_CONFIG_START( can09p, can09p_state )
-	MCFG_CPU_ADD("maincpu", M6809, XTAL_2MHz) // Check crystal!
+	MCFG_CPU_ADD("maincpu", M6809, XTAL_4_9152MHz) // IPL crystal
 	MCFG_CPU_PROGRAM_MAP(can09p_map)
 
 	/* --PIA inits----------------------- */
@@ -1189,6 +1210,7 @@ static MACHINE_CONFIG_START( can09p, can09p_state )
 
 	MCFG_DEVICE_ADD("ptm", PTM6840, 0)
 
+	/* RS232 usage: mame can09p -window -debug -rs232 terminal */
 	MCFG_DEVICE_ADD ("acia", ACIA6850, 0)
 	MCFG_ACIA6850_TXD_HANDLER (DEVWRITELINE ("rs232", rs232_port_device, write_txd))
 	MCFG_ACIA6850_RTS_HANDLER (DEVWRITELINE ("rs232", rs232_port_device, write_rts))
@@ -1198,10 +1220,6 @@ static MACHINE_CONFIG_START( can09p, can09p_state )
 
 	MCFG_DEVICE_ADD ("acia_clock", CLOCK, CAN09P_ACIA_CLOCK)
 	MCFG_CLOCK_SIGNAL_HANDLER (WRITELINE (can09p_state, write_acia_clock))
-/*
-MC6850 ':acia' Control: 03
-MC6850 ':acia' Control: 15
-*/
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( e100, e100_state )
@@ -1361,6 +1379,7 @@ MACHINE_CONFIG_END
 
 ROM_START( can09p )
 	ROM_REGION(0x10000, "roms", 0)
+	/* CAN09 v7 and CDBASIC 3.8 */
 	ROM_LOAD( "IC2-MON58B-c8d7.bin", 0x0000, 0x8000, CRC(7eabfec6) SHA1(e08e2349035389b441227df903aa54f4c1e4a337) )
 ROM_END
 
