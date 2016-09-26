@@ -28,7 +28,7 @@
  * http://elektronikforumet.com/forum/viewtopic.php?f=2&t=79576&start=150#p1203915
  *
  *  TODO:
- *  Didact designs:    mp68a, md6802, Modulab, Esselte 100, can09p, can09
+ *  Didact designs:    mp68a, md6802, Modulab, Esselte 100, can09t, can09
  * --------------------------------------------------------------------------
  *  - Add PCB layouts   OK     OK				 OK          OK
  *  - Dump ROM:s,       OK     OK				 rev2        OK      OK
@@ -846,11 +846,11 @@ ADDRESS_MAP_END
  * - AD/DA support for related BASIC functions
  * - Promett rom cartridge support
  */
-/* Candela prototype driver class */
-class can09p_state : public didact_state
+/* Candela terminal driver class */
+class can09t_state : public didact_state
 {
 public:
-	can09p_state(const machine_config &mconfig, device_type type, const char * tag)
+	can09t_state(const machine_config &mconfig, device_type type, const char * tag)
 		: didact_state(mconfig, type, tag)
 		,m_maincpu(*this, "maincpu")
 		,m_pia1(*this, PIA1_TAG)
@@ -869,7 +869,7 @@ public:
 		{ }
 	required_device<cpu_device> m_maincpu;
 	virtual void machine_reset() override { m_maincpu->reset(); LOG(("--->%s()\n", FUNCNAME)); };
-	virtual void machine_start() override;
+	virtual void machine_start() override { LOG(("%s()\n", FUNCNAME)); };
 	DECLARE_READ8_MEMBER( pia1_A_r );
 	DECLARE_READ8_MEMBER( pia1_B_r );
 	DECLARE_WRITE8_MEMBER( pia1_B_w );
@@ -892,46 +892,41 @@ protected:
 #endif
 };
 
-void can09p_state::machine_start()
-{
-	LOG(("%s()\n", FUNCNAME));
-}
-
-READ8_MEMBER( can09p_state::pia1_A_r )
+READ8_MEMBER( can09t_state::pia1_A_r )
 {
 	LOG(("%s()\n", FUNCNAME));
 	return 0;
 }
 
-READ8_MEMBER( can09p_state::pia1_B_r )
+READ8_MEMBER( can09t_state::pia1_B_r )
 {
 	LOG(("%s()\n", FUNCNAME));
 	return 0;
 }
 
-WRITE8_MEMBER( can09p_state::pia1_B_w )
+WRITE8_MEMBER( can09t_state::pia1_B_w )
 {
 	LOG(("%s(%02x)\n", FUNCNAME, data));
 }
 
-WRITE_LINE_MEMBER(can09p_state::pia1_cb2_w)
+WRITE_LINE_MEMBER(can09t_state::pia1_cb2_w)
 {
 	LOG(("%s(%02x)\n", FUNCNAME, state));
 }
 
-WRITE_LINE_MEMBER(can09p_state::pia2_cb2_w)
+WRITE_LINE_MEMBER(can09t_state::pia2_cb2_w)
 {
 	LOG(("%s(%02x)\n", FUNCNAME, state));
 }
 
-WRITE_LINE_MEMBER (can09p_state::write_acia_clock){
+WRITE_LINE_MEMBER (can09t_state::write_acia_clock){
 		m_acia->write_txc (state);
 		m_acia->write_rxc (state);
 }
 
 // traced and guessed from pcb images and debugger
 // It is very likelly that this is a PIA based dynamic address map, needs more analysis
-static ADDRESS_MAP_START( can09p_map, AS_PROGRAM, 8, can09p_state )
+static ADDRESS_MAP_START( can09t_map, AS_PROGRAM, 8, can09t_state )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM AM_REGION("roms", 0)
 	AM_RANGE(0x8000, 0xafff) AM_RAM
 	AM_RANGE(0xb100, 0xb100) AM_DEVREADWRITE("acia", acia6850_device, status_r, control_w)
@@ -944,7 +939,7 @@ static ADDRESS_MAP_START( can09p_map, AS_PROGRAM, 8, can09p_state )
 	AM_RANGE(0xe000, 0xffff) AM_ROM AM_REGION("roms", 0x6000)
 ADDRESS_MAP_END
 
-static INPUT_PORTS_START( can09p )
+static INPUT_PORTS_START( can09t )
 	PORT_START("LINE0")
 	PORT_START("LINE1")
 	PORT_START("LINE2")
@@ -952,7 +947,58 @@ static INPUT_PORTS_START( can09p )
 	PORT_START("LINE4")
 INPUT_PORTS_END
 
-/* Input ports
+/*
+ * TODO:
+ * - Map PIA:S
+ * - ROM/RAM paging by using the PIA:s and the myriad of 74138:s on the board
+ * - Vram and screen for the 6845 CRTC
+ * - Keyboard
+ * - Serial port
+ * - Floppy controller
+ * - Split out commonalities in a candela_state base class for can09 and can09t
+ */
+/* Candela main unit driver class */
+class can09_state : public didact_state
+{
+public:
+	can09_state(const machine_config &mconfig, device_type type, const char * tag)
+		: didact_state(mconfig, type, tag)
+		,m_maincpu(*this, "maincpu")
+		,m_pia1(*this, PIA1_TAG)
+	{ }
+	required_device<cpu_device> m_maincpu;
+	virtual void machine_reset() override { m_maincpu->reset(); LOG(("--->%s()\n", FUNCNAME)); };
+	virtual void machine_start() override { LOG(("%s()\n", FUNCNAME)); };
+protected:
+	required_device<pia6821_device> m_pia1;
+};
+
+static INPUT_PORTS_START( can09 )
+	PORT_START("LINE0")
+	PORT_START("LINE1")
+	PORT_START("LINE2")
+	PORT_START("LINE3")
+	PORT_START("LINE4")
+INPUT_PORTS_END
+
+// traced and guessed from pcb images and debugger
+// It is very likelly that this is a PIA based dynamic address map, needs more analysis
+static ADDRESS_MAP_START( can09_map, AS_PROGRAM, 8, can09_state )
+	AM_RANGE(0x0000, 0x7fff) AM_RAM
+	AM_RANGE(0xe034, 0xe037) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read, write)
+#if 0
+	AM_RANGE(0xb100, 0xb100) AM_DEVREADWRITE("acia", acia6850_device, status_r, control_w)
+	AM_RANGE(0xb101, 0xb101) AM_DEVREADWRITE("acia", acia6850_device, data_r, data_w)
+	AM_RANGE(0xb110, 0xb113) AM_DEVREADWRITE(PIA1_TAG, pia6821_device, read_alt, write_alt)
+	AM_RANGE(0xb120, 0xb123) AM_DEVREADWRITE(PIA2_TAG, pia6821_device, read_alt, write_alt)
+	AM_RANGE(0xb130, 0xb137) AM_DEVREADWRITE("ptm", ptm6840_device, read, write)
+	AM_RANGE(0xb200, 0xc1ff) AM_ROM AM_REGION("roms", 0x3200)
+	AM_RANGE(0xc200, 0xdfff) AM_RAM /* Needed for BASIC etc */
+#endif
+	AM_RANGE(0xe000, 0xffff) AM_ROM AM_REGION("roms", 0)
+ADDRESS_MAP_END
+
+/* E100 Input ports
  * Four e100 keys are not mapped yet,
  * - The redundant '*' on the keyboard together with the '\'' single quote, both on same e100 key
  * - The 'E' key on the keypad, presumably used for calculator applications to remove the last entered number
@@ -1176,20 +1222,20 @@ TIMER_DEVICE_CALLBACK_MEMBER(didact_state::scan_artwork)
 	}
 }
 
-/* Fake clock values until we figure out how the PTM generates the clocks */
-#define CAN09P_BAUDGEN_CLOCK XTAL_1_8432MHz
-#define CAN09P_ACIA_CLOCK (CAN09P_BAUDGEN_CLOCK / 12)
+/* Fake clock values until we TODO: figure out how the PTM generates the clocks */
+#define CAN09T_BAUDGEN_CLOCK XTAL_1_8432MHz
+#define CAN09T_ACIA_CLOCK (CAN09T_BAUDGEN_CLOCK / 12)
 
-static MACHINE_CONFIG_START( can09p, can09p_state )
+static MACHINE_CONFIG_START( can09t, can09t_state )
 	MCFG_CPU_ADD("maincpu", M6809, XTAL_4_9152MHz) // IPL crystal
-	MCFG_CPU_PROGRAM_MAP(can09p_map)
+	MCFG_CPU_PROGRAM_MAP(can09t_map)
 
 	/* --PIA inits----------------------- */
 	MCFG_DEVICE_ADD(PIA1_TAG, PIA6821, 0) // CPU board
-	MCFG_PIA_READPA_HANDLER(READ8(can09p_state, pia1_A_r))
-	MCFG_PIA_READPB_HANDLER(READ8(can09p_state, pia1_B_r))
-	MCFG_PIA_WRITEPB_HANDLER(WRITE8(can09p_state, pia1_B_w))
-	MCFG_PIA_CB2_HANDLER(WRITELINE(can09p_state, pia1_cb2_w))
+	MCFG_PIA_READPA_HANDLER(READ8(can09t_state, pia1_A_r))
+	MCFG_PIA_READPB_HANDLER(READ8(can09t_state, pia1_B_r))
+	MCFG_PIA_WRITEPB_HANDLER(WRITE8(can09t_state, pia1_B_w))
+	MCFG_PIA_CB2_HANDLER(WRITELINE(can09t_state, pia1_cb2_w))
 	/* 0xE1FB 0xB112 (PIA1 Control A) = 0x00 - Channel A IRQ disabled */
 	/* 0xE1FB 0xB113 (PIA1 Control B) = 0x00 - Channel B IRQ disabled */
 	/* 0xE203 0xB110 (PIA1 DDR A)     = 0x00 - Port A all inputs */
@@ -1198,7 +1244,7 @@ static MACHINE_CONFIG_START( can09p, can09p_state )
 	/* 0xE20A 0xB113 (PIA1 Control B) = 0x34 - CB2 is low and lock DDRB */
 	/* 0xE20E 0xB111 (PIA1 port B)    = 0x10 - Data to port B */
 	MCFG_DEVICE_ADD(PIA2_TAG, PIA6821, 0) // CPU board
-	MCFG_PIA_CB2_HANDLER(WRITELINE(can09p_state, pia2_cb2_w))
+	MCFG_PIA_CB2_HANDLER(WRITELINE(can09t_state, pia2_cb2_w))
 	/* 0xE212 0xB122 (PIA2 Control A) = 0x00 - Channel A IRQ disabled */
 	/* 0xE212 0xB123 (PIA2 Control B) = 0x00 - Channel B IRQ disabled */
 	/* 0xE215 0xB120 (PIA2 DDR A)     = 0x00 - Port A all inputs */
@@ -1210,7 +1256,7 @@ static MACHINE_CONFIG_START( can09p, can09p_state )
 
 	MCFG_DEVICE_ADD("ptm", PTM6840, 0)
 
-	/* RS232 usage: mame can09p -window -debug -rs232 terminal */
+	/* RS232 usage: mame can09t -window -debug -rs232 terminal */
 	MCFG_DEVICE_ADD ("acia", ACIA6850, 0)
 	MCFG_ACIA6850_TXD_HANDLER (DEVWRITELINE ("rs232", rs232_port_device, write_txd))
 	MCFG_ACIA6850_RTS_HANDLER (DEVWRITELINE ("rs232", rs232_port_device, write_rts))
@@ -1218,8 +1264,16 @@ static MACHINE_CONFIG_START( can09p, can09p_state )
 	MCFG_RS232_RXD_HANDLER (DEVWRITELINE ("acia", acia6850_device, write_rxd))
 	MCFG_RS232_CTS_HANDLER (DEVWRITELINE ("acia", acia6850_device, write_cts))
 
-	MCFG_DEVICE_ADD ("acia_clock", CLOCK, CAN09P_ACIA_CLOCK)
-	MCFG_CLOCK_SIGNAL_HANDLER (WRITELINE (can09p_state, write_acia_clock))
+	MCFG_DEVICE_ADD ("acia_clock", CLOCK, CAN09T_ACIA_CLOCK)
+	MCFG_CLOCK_SIGNAL_HANDLER (WRITELINE (can09t_state, write_acia_clock))
+MACHINE_CONFIG_END
+
+static MACHINE_CONFIG_START( can09, can09_state )
+	MCFG_CPU_ADD("maincpu", M6809E, XTAL_4_9152MHz) // check crystal
+	MCFG_CPU_PROGRAM_MAP(can09_map)
+
+	/* --PIA inits----------------------- */
+	MCFG_DEVICE_ADD(PIA1_TAG, PIA6821, 0) // CPU board
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( e100, e100_state )
@@ -1377,13 +1431,18 @@ static MACHINE_CONFIG_START( mp68a, mp68a_state )
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("artwork_timer", mp68a_state, scan_artwork, attotime::from_hz(10))
 MACHINE_CONFIG_END
 
-ROM_START( can09p )
+ROM_START( can09t )
 	ROM_REGION(0x10000, "roms", 0)
 	/* CAN09 v7 and CDBASIC 3.8 */
 	ROM_LOAD( "ic2-mon58b-c8d7.bin", 0x0000, 0x8000, CRC(7eabfec6) SHA1(e08e2349035389b441227df903aa54f4c1e4a337) )
 	/* Programmable logic for the CAN09 1.4 PCB */
 	ROM_REGION(0x1000, "plas", 0)
 	ROM_LOAD( "ic10-21.1.bin", 		 0x0000, 0x20,   CRC(b75ac72d) SHA1(689363200035b11a823d17a8d717f313eeefc3bf) )
+ROM_END
+
+ROM_START( can09 )
+	ROM_REGION(0x10000, "roms", 0)
+	ROM_LOAD( "ic14-vdu42.bin", 0x0000, 0x2000, CRC(67fc3c8c) SHA1(1474d6259646798377ef4ce7e43d3c8d73858344) )
 ROM_END
 
 /* ROM sets from Didact was not versioned in general, so the numbering are just assumptions */
@@ -1422,8 +1481,9 @@ ROM_START( mp68a ) // ROM image from http://elektronikforumet.com/forum/viewtopi
 	ROM_LOAD( "didactB.bin", 0x0a00, 0x0200, CRC(592898dc) SHA1(2962f4817712cae97f3ab37b088fc73e66535ff8) )
 ROM_END
 
-//    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   CLASS            INIT        COMPANY             FULLNAME           FLAGS
-COMP( 1979, mp68a,      0,          0,      mp68a,      mp68a,  driver_device,   0,          "Didact AB",        "mp68a",           MACHINE_NO_SOUND_HW )
-COMP( 1982, e100,       0,          0,      e100,       e100,   driver_device,   0,          "Didact AB",        "Esselte 100",     MACHINE_NO_SOUND_HW )
-COMP( 1983, md6802,     0,          0,      md6802,     md6802, driver_device,   0,          "Didact AB",        "Mikrodator 6802", MACHINE_NO_SOUND_HW )
-COMP( 1984, can09p,     0,          0,      can09p,     can09p, driver_device,   0,          "Didact AB",        "Candela CAN09 prototype",   MACHINE_NOT_WORKING | MACHINE_NO_SOUND )
+//    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   CLASS            INIT        COMPANY             FULLNAME                     FLAGS
+COMP( 1979, mp68a,      0,          0,      mp68a,      mp68a,  driver_device,   0,          "Didact AB",        "mp68a",                     MACHINE_NO_SOUND_HW )
+COMP( 1982, e100,       0,          0,      e100,       e100,   driver_device,   0,          "Didact AB",        "Esselte 100",               MACHINE_NO_SOUND_HW )
+COMP( 1983, md6802,     0,          0,      md6802,     md6802, driver_device,   0,          "Didact AB",        "Mikrodator 6802",           MACHINE_NO_SOUND_HW )
+COMP( 1984, can09,      0,          0,      can09,      can09,  driver_device,   0,          "Candela Data AB",  "Candela CAN09 main unit",   MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )
+COMP( 1984, can09t,     0,          0,      can09t,     can09t, driver_device,   0,          "Candela Data AB",  "Candela CAN09 terminal",    MACHINE_NO_SOUND_HW )
