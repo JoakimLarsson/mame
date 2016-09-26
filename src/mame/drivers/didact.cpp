@@ -1380,7 +1380,10 @@ MACHINE_CONFIG_END
 ROM_START( can09p )
 	ROM_REGION(0x10000, "roms", 0)
 	/* CAN09 v7 and CDBASIC 3.8 */
-	ROM_LOAD( "IC2-MON58B-c8d7.bin", 0x0000, 0x8000, CRC(7eabfec6) SHA1(e08e2349035389b441227df903aa54f4c1e4a337) )
+	ROM_LOAD( "ic2-mon58b-c8d7.bin", 0x0000, 0x8000, CRC(7eabfec6) SHA1(e08e2349035389b441227df903aa54f4c1e4a337) )
+	/* Programmable logic for the CAN09 1.4 PCB */
+	ROM_REGION(0x1000, "plas", 0)
+	ROM_LOAD( "ic10-21.1.bin", 		 0x0000, 0x20,   CRC(b75ac72d) SHA1(689363200035b11a823d17a8d717f313eeefc3bf) )
 ROM_END
 
 /* ROM sets from Didact was not versioned in general, so the numbering are just assumptions */
