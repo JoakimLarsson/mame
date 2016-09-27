@@ -969,9 +969,41 @@ public:
 	required_device<cpu_device> m_maincpu;
 	virtual void machine_reset() override { m_maincpu->reset(); LOG(("--->%s()\n", FUNCNAME)); };
 	virtual void machine_start() override { LOG(("%s()\n", FUNCNAME)); };
+	DECLARE_READ8_MEMBER( pia1_A_r );
+	DECLARE_WRITE8_MEMBER( pia1_A_w );
+	DECLARE_READ8_MEMBER( pia1_B_r );
+	DECLARE_WRITE8_MEMBER( pia1_B_w );
+	DECLARE_WRITE_LINE_MEMBER( pia1_cb2_w);
 protected:
 	required_device<pia6821_device> m_pia1;
 };
+
+READ8_MEMBER( can09_state::pia1_A_r )
+{
+	LOG(("%s()\n", FUNCNAME));
+	return 0;
+}
+
+WRITE8_MEMBER( can09_state::pia1_A_w )
+{
+	LOG(("%s(%02x)\n", FUNCNAME, data));
+}
+
+READ8_MEMBER( can09_state::pia1_B_r )
+{
+	LOG(("%s()\n", FUNCNAME));
+	return 0;
+}
+
+WRITE8_MEMBER( can09_state::pia1_B_w )
+{
+	LOG(("%s(%02x)\n", FUNCNAME, data));
+}
+
+WRITE_LINE_MEMBER(can09_state::pia1_cb2_w)
+{
+	LOG(("%s(%02x)\n", FUNCNAME, state));
+}
 
 static INPUT_PORTS_START( can09 )
 	PORT_START("LINE0")
@@ -1274,6 +1306,11 @@ static MACHINE_CONFIG_START( can09, can09_state )
 
 	/* --PIA inits----------------------- */
 	MCFG_DEVICE_ADD(PIA1_TAG, PIA6821, 0) // CPU board
+	MCFG_PIA_READPA_HANDLER(READ8(can09_state, pia1_A_r))
+	MCFG_PIA_WRITEPA_HANDLER(WRITE8(can09_state, pia1_A_w))
+	MCFG_PIA_READPB_HANDLER(READ8(can09_state, pia1_B_r))
+	MCFG_PIA_WRITEPB_HANDLER(WRITE8(can09_state, pia1_B_w))
+	MCFG_PIA_CB2_HANDLER(WRITELINE(can09_state, pia1_cb2_w))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( e100, e100_state )
