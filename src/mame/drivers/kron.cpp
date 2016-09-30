@@ -78,7 +78,7 @@
  * Identified chips
  * -----------------
  * Z180 MPU (Z8018006PCS)
- * NM27C512Q 64Kb EPROM
+ * NM27C512Q 64Kb EPROM, but A15 tied to +5v and schematics supports only 27256 
  * HY6264A 8Kb SRAM
  * 93C46B1 128 bytes EEPROM
  *
@@ -94,13 +94,12 @@
  * - terminal defaults to cyrillic characterset possibly due to setting in EEPROM
  * - http://www.phantom.sannata.ru/forum/index.php?t=5200 - Kron-2 for sale
  * - http://f-picture.net/fp/3b2a0496b981437a9c3f90ed236363c9 - Picture of Kron-2
- * - http://www.kron.com.ua/ - the company has no info on legacy hardware unfortunality
- *
+ * - http://www.kron.com.ua/
+ * - https://frakaday.blogspot.se/p/kron180.html - schematics and more info
  */
 
 #include "emu.h"
 #include "cpu/z180/z180.h"
-#include "cpu/z80/z80.h"
 
 #define VERBOSE 0
 
@@ -141,7 +140,7 @@ private:
 
 static ADDRESS_MAP_START (kron180_mem, AS_PROGRAM, 8, kron180_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE (0x00000, 0x07fff) AM_ROM /* 32 Kb of EPROM	*/
+	AM_RANGE (0x00000, 0x07fff) AM_ROM AM_REGION("roms", 0x8000) 
 	AM_RANGE (0x08000, 0x085ff) AM_RAM 
 	AM_RANGE (0x08600, 0x095ff) AM_RAM AM_SHARE("videoram")
 	AM_RANGE (0x09600, 0x09fff) AM_RAM 
@@ -196,9 +195,13 @@ UINT32 kron180_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap,
 /* Start it up */
 void kron180_state::machine_start ()
 {
-	LOG (logerror ("machine_start\n"));
+	LOG(("%s()\n", FUNCNAME));
 	m_char_ptr  = memregion("chargen")->base();
 	m_vram      = (UINT8 *)m_videoram.target();
+
+	/* register for state saving */
+	save_pointer (NAME (m_char_ptr), sizeof(m_char_ptr));
+	save_pointer (NAME (m_vram), sizeof(m_vram));
 }
 
 /*
@@ -223,23 +226,11 @@ MACHINE_CONFIG_END
 
 /* ROM definitions */
 ROM_START (kron180)
-	ROM_REGION (0x1000000, "maincpu", 0)
+	ROM_REGION(0x10000, "roms", 0)
+	ROM_LOAD ("k180DD4-2.8M.bin", 0x000000, 0x10000, CRC (ae0642ad) SHA1 (2c53a714de6af4b64e46fcd34bca6d4438511765))
 
-#if 0
-// Full 64Kb EPROM but first half was just garbish so I trimmed away the first 32Kb from the EPROM
-	ROM_LOAD ("kron.bin", 0x000000, 0x8000, CRC (ae0642ad) SHA1 (2c53a714de6af4b64e46fcd34bca6d4438511765))
-#endif
-
-// Last half moved from 0x8000 to 0x0000, works but need to trace A15 from EPROM, probably connected to GND.
-	ROM_LOAD ("kron.bin", 0x000000, 0x8000, CRC (6beed65e) SHA1 (338d6b77349d4d50488a4393bcd4f5fe4190d510))
-
-#if 0
-	ROM_REGION(0x0800, "chargen",0)
-	ROM_LOAD( "e100U506.bin", 0x0000, 0x0800, CRC(fff9f288) SHA1(2dfb3eb551fe1ef67da328f61ef51ae8d1abdfb8) )
-#else
 	ROM_REGION(0x1000, "chargen",0)
 	ROM_LOAD( "cga.chr", 0x0000, 0x1000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd) )
-#endif
 ROM_END
 
 /* Driver */
