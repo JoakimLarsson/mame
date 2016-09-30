@@ -100,6 +100,7 @@
 
 #include "emu.h"
 #include "cpu/z180/z180.h"
+#include "machine/pckeybrd.h"
 
 #define VERBOSE 0
 
@@ -127,13 +128,16 @@ kron180_state(const machine_config &mconfig, device_type type, const char *tag) 
 	driver_device (mconfig, type, tag)
 	,m_maincpu (*this, "maincpu")
 	,m_videoram(*this, "videoram")
+	,m_keyboard(*this, "pc_keyboard")
 	{ }
 	UINT8 *m_char_ptr;
 	UINT8 *m_vram;
 	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	DECLARE_WRITE_LINE_MEMBER(keyb_interrupt);
 protected:
 	required_device<cpu_device> m_maincpu;
 	required_shared_ptr<UINT8> m_videoram;
+	required_device<pc_keyboard_device> m_keyboard;
 private:
 	virtual void machine_start ();
 };
@@ -152,6 +156,7 @@ ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START (kron180)
+	PORT_INCLUDE(pc_keyboard)
 INPUT_PORTS_END
 
 /* Video */
@@ -204,11 +209,17 @@ void kron180_state::machine_start ()
 	save_pointer (NAME (m_vram), sizeof(m_vram));
 }
 
+/* TODO: checkout ibmpcjr and schematics to figure this one out */
+WRITE_LINE_MEMBER(kron180_state::keyb_interrupt)
+{
+	LOG(("%s(%d)\n", FUNCNAME, state));
+}
+
 /*
  * Machine configuration
  */
 static MACHINE_CONFIG_START (kron180, kron180_state)
-/* basic machine hardware */
+	/* basic machine hardware */
 	MCFG_CPU_ADD ("maincpu", Z180, XTAL_6MHz)
 	MCFG_CPU_PROGRAM_MAP (kron180_mem)
 	MCFG_CPU_IO_MAP(kron180_iomap)
@@ -222,6 +233,9 @@ static MACHINE_CONFIG_START (kron180, kron180_state)
 	MCFG_SCREEN_PALETTE("palette")
 
 	MCFG_PALETTE_ADD_MONOCHROME("palette")
+
+	/* keyboard */
+	MCFG_PC_KEYB_ADD("pc_keyboard", WRITELINE(kron180_state, keyb_interrupt))
 MACHINE_CONFIG_END
 
 /* ROM definitions */
