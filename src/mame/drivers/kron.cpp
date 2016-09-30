@@ -214,8 +214,8 @@ static MACHINE_CONFIG_START (kron180, kron180_state)
 	MCFG_SCREEN_ADD_MONOCHROME("screen", RASTER, rgb_t::green)
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_UPDATE_DRIVER(kron180_state, screen_update)
-	MCFG_SCREEN_SIZE(81 * 8, 25 * 8)
-	MCFG_SCREEN_VISIBLE_AREA(0, 647, 0, 199)
+	MCFG_SCREEN_SIZE(80 * 10, 24 * 10)
+	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 199) // This need to be fixed once the real chartable is used...
 	MCFG_SCREEN_PALETTE("palette")
 
 	MCFG_PALETTE_ADD_MONOCHROME("palette")
