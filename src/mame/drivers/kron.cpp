@@ -31,7 +31,7 @@
  * |                               +-------+  | 74374   |    |7474.1|   +-------+  |
  * |                                          +---------+    +------+              |
  * |                              +------DD15   +-----DD1    +----DD19             |
- * |                              | 74243  |    | 74166 |    |7474.2|              |
+ * |                              | 74138  |    | 74166 |    |7474.2|              |
  * |+-------BQ1 +-------------DD4 +--------+    +-------+    +------+              |
  * ||XTAL     | |               |  +-----DD16   +-----DD18      +-DD28  ..-^-..    |
  * ||12.280MHz| | NM27C512      |  | 7432  |    | 74395 |   93C46CB1| /         \  |
@@ -144,10 +144,9 @@ private:
 
 static ADDRESS_MAP_START (kron180_mem, AS_PROGRAM, 8, kron180_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE (0x00000, 0x07fff) AM_ROM AM_REGION("roms", 0x8000) 
-	AM_RANGE (0x08000, 0x085ff) AM_RAM 
-	AM_RANGE (0x08600, 0x095ff) AM_RAM AM_SHARE("videoram")
-	AM_RANGE (0x09600, 0x09fff) AM_RAM 
+	AM_RANGE (0x0000, 0x7fff) AM_ROM AM_REGION("roms", 0x8000) 
+	AM_RANGE (0x8000, 0x9fff) AM_RAM AM_MIRROR(0x6000)
+	AM_RANGE (0x8600, 0x95ff) AM_RAM AM_SHARE("videoram")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kron180_iomap, AS_IO, 8, kron180_state )
