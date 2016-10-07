@@ -34,9 +34,9 @@
  * |                              | 74138  |    | 74166 |    |7474.2|              |
  * |+-------BQ1 +-------------DD4 +--------+    +-------+    +------+              |
  * ||XTAL     | |               |  +-----DD16   +-----DD18      +-DD28  ..-^-..    |
- * ||12.280MHz| | NM27C512      |  | 7432  |    | 74395 |   93C46CB1| /         \  |
- * |+---------+ +---------------+  +-----DD37  DD18-----+   EEPROM--+/  Beeper   \ |
- * |+---------+                    | 7400  |     +----DD32  +----DD23|     O     | |
+ * ||12.280MHz| | NM27C512      |  | 7432  |    | 74670 |   93C46CB1| /         \  |
+ * |+---------+ +---------------+  +-----DD37   +-------+   EEPROM--+/  Beeper   \ |
+ * |+------DD26                    | 7400  |     +----DD32  +----DD23|     O     | |
  * || 74299   |                    +-------+     | 7474  |  | 74259 |\   BQ2     / |
  * |+---------+  +------------DD5                +-------+  +-------+ \         /  |
  * |+---------+  | HY6264A      |  +-----DD8     +----DD31   +---DD25  ''--_--''   |
@@ -102,12 +102,14 @@
 #include "cpu/z180/z180.h"
 #include "machine/pckeybrd.h"
 
-#define VERBOSE 0
+#define VERBOSE 2
 
 #define LOGPRINT(x) do { if (VERBOSE) logerror x; } while (0)
 #define LOG(x) {}
-#define LOGSCAN(x) LOGPRINT(x)
+#define LOGIO(x) {}
+#define LOGSCAN(x) {}
 #define LOGSCREEN(x) {}
+#define LOGKBD(x) LOGPRINT(x)
 #define RLOG(x) {}
 #define LOGCS(x) {}
 
@@ -134,6 +136,15 @@ kron180_state(const machine_config &mconfig, device_type type, const char *tag) 
 	UINT8 *m_vram;
 	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	DECLARE_WRITE_LINE_MEMBER(keyb_interrupt);
+	DECLARE_WRITE8_MEMBER( sn74259_w ){ 	LOGIO(("%s %02x = %02x\n", FUNCNAME, offset & 0x07, offset & 0x08 ? 1 : 0)); }
+	DECLARE_WRITE8_MEMBER( ap5_w ){ 		LOGIO(("%s %02x = %02x\n", FUNCNAME, offset, data)); }
+	DECLARE_READ8_MEMBER( ap5_r ){ 			LOGIO(("%s() %02x = %02x\n",  FUNCNAME, offset, 1)); return 1; }
+	DECLARE_WRITE8_MEMBER( wkb_w ){ 		LOGIO(("%s %02x = %02x\n", FUNCNAME, offset, data)); }
+	DECLARE_WRITE8_MEMBER( sn74299_w ){		LOGIO(("%s %02x = %02x\n", FUNCNAME, offset, data)); }
+	DECLARE_READ8_MEMBER( sn74299_r ){ 		LOGIO(("%s() %02x = %02x\n", FUNCNAME, offset, 1)); return 1; }
+	DECLARE_WRITE8_MEMBER( txen_w ){ 		LOGIO(("%s %02x = %02x\n", FUNCNAME, offset, data)); }
+	DECLARE_WRITE8_MEMBER( kbd_reset_w ){ 	LOGIO(("%s %02x = %02x\n", FUNCNAME, offset, data)); }
+	DECLARE_WRITE8_MEMBER( dreq_w ){ 		LOGIO(("%s %02x = %02x\n", FUNCNAME, offset, data)); }
 protected:
 	required_device<cpu_device> m_maincpu;
 	required_shared_ptr<UINT8> m_videoram;
@@ -141,7 +152,11 @@ protected:
 private:
 	virtual void machine_start ();
 };
-
+#if 0
+READ8_MEMBER( e100_state::pia_r )
+{
+}
+#endif
 static ADDRESS_MAP_START (kron180_mem, AS_PROGRAM, 8, kron180_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE (0x0000, 0x7fff) AM_ROM AM_REGION("roms", 0x8000) 
@@ -149,8 +164,46 @@ static ADDRESS_MAP_START (kron180_mem, AS_PROGRAM, 8, kron180_state)
 	AM_RANGE (0x8600, 0x95ff) AM_RAM AM_SHARE("videoram")
 ADDRESS_MAP_END
 
+/*   IO decoding
+ *   
+ *   A7 A6 A5 A4 A3 A2 A1 A0
+ *    0  x  x  x  x  x  x  x - 74138 selected
+ *    0  0  0  0  x  x  x  x - 74259 selected
+ *    0  0  0  0  D  0  0  0 - EEPROM Data In
+ *    0  0  0  0  D  0  0  1 - COMDTR
+ *    0  0  0  0  D  0  1  0 - EEPROM CS
+ *    0  0  0  0  D  0  1  1 - Vertical Sync
+ *    0  0  0  0  D  1  0  0 - TBRQ and BLANK set
+ *    0  0  0  0  D  1  0  1 - BLINK
+ *    0  0  0  0  D  1  1  0 - CSTR
+ *    0  0  0  0  D  1  1  1 - EEPROM CLK
+ *    0  0  0  1  x  x  x  x - AP5
+ *    0  0  1  0  x  x  x  x - WKB
+ *    0  0  1  1  x  x  x  x - 74299 G1+G2
+ *    0  1  0  0  x  x  x  x - Reset of 74299
+ *    0  1  0  1  x  x  x  x - Enable TX?
+ *    0  1  1  0  x  x  x  x - Reset KBD
+ *    0  1  1  1  x  x  x  x - DKA/DREQ0 Z180 = D0
+ *
+ * Now, in paralell there is alot of stuff going on in the upper I/O address lines
+ * they are driving the character generator and some other signals 
+ *  A19 - not available on the DIP64 package  
+ *  A18 - multiplexed pin used as Tout pulsing the VT1 signal
+ *  A17 - WA on DD17 (74670) and DD18 (74670)
+ *  A16 - WB on DD 17 (74670) and DD18 (74670)
+ *
+ * At the moment we emulate the screen at a high level so I just disregard the special functions on A16 - A18 by mirroring the mapping below
+ */
 static ADDRESS_MAP_START( kron180_iomap, AS_IO, 8, kron180_state )
-	AM_RANGE( 0x0000, 0x003f ) AM_RAM // internal regs
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE( 0x0000, 0x000f ) AM_WRITE(sn74259_w)
+	AM_RANGE( 0x0010, 0x001f ) AM_READWRITE(ap5_r, ap5_w)
+	AM_RANGE( 0x0020, 0x002f ) AM_WRITE(wkb_w)
+	AM_RANGE( 0x0030, 0x003f ) AM_READ(sn74299_r)
+	AM_RANGE( 0x0040, 0x004f ) AM_WRITE(sn74299_w)
+	AM_RANGE( 0x0050, 0x005f ) AM_WRITE(txen_w)
+	AM_RANGE( 0x0060, 0x006f ) AM_WRITE(kbd_reset_w)
+	AM_RANGE( 0x0070, 0x007f ) AM_WRITE(dreq_w)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -211,7 +264,13 @@ void kron180_state::machine_start ()
 /* TODO: checkout ibmpcjr and schematics to figure this one out */
 WRITE_LINE_MEMBER(kron180_state::keyb_interrupt)
 {
-	LOG(("%s(%d)\n", FUNCNAME, state));
+	int data;
+
+	if(state && (data = m_keyboard->read(machine().driver_data()->generic_space(), 0)))
+	{
+		LOGKBD(("%s(%02x)\n", FUNCNAME, data));
+		/* TODO store and present this to K180 in a good way. */
+	}
 }
 
 /*
@@ -219,7 +278,7 @@ WRITE_LINE_MEMBER(kron180_state::keyb_interrupt)
  */
 static MACHINE_CONFIG_START (kron180, kron180_state)
 	/* basic machine hardware */
-	MCFG_CPU_ADD ("maincpu", Z180, XTAL_6MHz)
+	MCFG_CPU_ADD ("maincpu", Z180, XTAL_12_288MHz)
 	MCFG_CPU_PROGRAM_MAP (kron180_mem)
 	MCFG_CPU_IO_MAP(kron180_iomap)
 
