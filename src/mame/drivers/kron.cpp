@@ -149,6 +149,7 @@ protected:
 	required_device<cpu_device> m_maincpu;
 	required_shared_ptr<UINT8> m_videoram;
 	required_device<pc_keyboard_device> m_keyboard;
+	UINT8 m_kbd_data;
 private:
 	virtual void machine_start ();
 };
@@ -261,14 +262,30 @@ void kron180_state::machine_start ()
 	save_pointer (NAME (m_vram), sizeof(m_vram));
 }
 
-/* TODO: checkout ibmpcjr and schematics to figure this one out */
+/* Interrupt Handling */
+#if 0
+WRITE8_MEMBER(kron180_state::irq0_ack_w)
+{
+	m_irq0_ack = data;
+	if ((data & 1) == 1)
+		m_maincpu->set_input_line(0, CLEAR_LINE);
+}
+
+INTERRUPT_GEN_MEMBER(kron180_state::interrupt)
+{
+	if ((m_irq0_ack & 1) == 1)
+	{
+		device.execute().set_input_line(0, ASSERT_LINE);
+	}
+}
+#endif
+
 WRITE_LINE_MEMBER(kron180_state::keyb_interrupt)
 {
-	int data;
-
-	if(state && (data = m_keyboard->read(machine().driver_data()->generic_space(), 0)))
+	if(state && (m_kbd_data = m_keyboard->read(machine().driver_data()->generic_space(), 0)))
 	{
-		LOGKBD(("%s(%02x)\n", FUNCNAME, data));
+		LOGKBD(("%s(%02x)\n", FUNCNAME, m_kbd_data));
+		m_maincpu->set_input_line(2, ASSERT_LINE);
 		/* TODO store and present this to K180 in a good way. */
 	}
 }
