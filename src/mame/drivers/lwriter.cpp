@@ -82,6 +82,8 @@ public:
 	{ }
 	DECLARE_READ16_MEMBER (bootvect_r);
 	DECLARE_WRITE16_MEMBER (bootvect_w);
+	DECLARE_READ8_MEMBER(via_in_a);
+	DECLARE_READ8_MEMBER(via_in_b);
 	virtual void machine_start () override;
 	virtual void machine_reset () override;
 private:
@@ -117,10 +119,26 @@ static ADDRESS_MAP_START (maincpu_map, AS_PROGRAM, 16, lwriter_state)
 	AM_RANGE(0x00a00002, 0x00a00003) AM_DEVREAD8 ("scc", scc8530_device, cb_r, 0xff00)
 	AM_RANGE(0x00a00006, 0x00a00007) AM_DEVREAD8 ("scc", scc8530_device, db_r, 0xff00)
 
+
+/* VIA host wireing from blurry schematics
+
+ 4/B2 --- DRAMEN* --- 24 CS1
+ 7/B4 --- VMA*------- 23 CS2*
+         A1-A4------- 38-35 RS0-RS3
+         RESET* ----- 34 RES*
+ 7/B3 --- R/W* ------ 22 R/W* 
+ 7/B4 --- 2CLK ------ 25 2CLK
+ 7/C4 --- VIAINT* --- 21 IRQ
+         D0-D7 ------ D0-D7
+------
+
+*/
+
 #if TPI
 	AM_RANGE(0x00e00010, 0x00e0001f) AM_DEVREADWRITE8 ("tpi", tpi6523_device, read, write, 0x00ff) // Used on older boards, needs proper mapping
 #else
-	AM_RANGE(0x00e00000, 0x00e0001f) AM_DEVREADWRITE8 ("via", via6522_device, read, write, 0x00ff)
+//	AM_RANGE(0x00e00000, 0x00e0001f) AM_DEVREADWRITE8 ("via", via6522_device, read, write, 0x00ff)
+	AM_RANGE(0x00400000, 0x0040001f) AM_DEVREADWRITE8 ("via", via6522_device, read, write, 0x00ff)
 #endif
 ADDRESS_MAP_END
 
@@ -152,13 +170,26 @@ WRITE16_MEMBER (lwriter_state::bootvect_w){
 	m_sysrom = &m_sysram[0]; // redirect all upcomming accesses to masking RAM until reset.
 }
 
+READ8_MEMBER(lwriter_state::via_in_a)
+{
+	printf("Reading A\n");
+	return 0x40;
+}
+
+READ8_MEMBER(lwriter_state::via_in_b)
+{
+	printf("Reading B\n");
+	return 0x40;
+}
+
+
 #define CPU_CLK (XTAL_22_3210MHz / 2) // Based on pictures form here: http://picclick.co.uk/Apple-Postscript-LaserWriter-IINT-Printer-640-4105-M6009-Mainboard-282160713108.html#&gid=1&pid=7
-#define RXC_CLK ((CPU_CLK - (87 * 16 * 70)) / 3) // Tuned to get 9600 baud according to manual, needs rework based on real hardware
+#define SCC_CLK XTAL_3_6864MHz // Closest pick based on available crystals, schematics which says 3.7MHz and tuning to get 9600 as the manual says
 
 static MACHINE_CONFIG_START( lwriter, lwriter_state )
 	MCFG_CPU_ADD("maincpu", M68000, CPU_CLK)
 	MCFG_CPU_PROGRAM_MAP(maincpu_map)
-	MCFG_SCC8530_ADD("scc", CPU_CLK, RXC_CLK, 0, RXC_CLK, 0)
+	MCFG_SCC8530_ADD("scc", SCC_CLK, SCC_CLK, 0, SCC_CLK, 0) // PCLK == RTxCA == RTxCB according to schematics
 	/* Port A */
 	MCFG_Z80SCC_OUT_TXDA_CB(DEVWRITELINE("rs232a", rs232_port_device, write_txd))
 	MCFG_Z80SCC_OUT_DTRA_CB(DEVWRITELINE("rs232a", rs232_port_device, write_dtr))
@@ -180,10 +211,70 @@ static MACHINE_CONFIG_START( lwriter, lwriter_state )
 	MCFG_DEVICE_ADD("tpi", TPI6525, 0)
 #else
 	MCFG_DEVICE_ADD("via", VIA6522, 0)
+	MCFG_VIA6522_READPA_HANDLER(READ8(lwriter_state,via_in_a))
+	MCFG_VIA6522_READPB_HANDLER(READ8(lwriter_state,via_in_b))
 #endif
 MACHINE_CONFIG_END
 
-/* SCC init sequence
+/* 
+ * VIA init sequence
+ * Reg 15 <- 05 - 
+ * Reg 3 <- 05 
+ * Reg 15 <- 00
+ * Reg 2 <- a9 
+Reading B      
+ * Reg 0 -> 40
+ 
+ * Reg 0 <- 00 - preload output B 0 
+* Reg 1 <- 01 - preload output A 1
+* Reg 2 <- ff - DDRB all outputs
+* Reg 3 <- fe - DDRA all outputs but A0
+* Reg 0 -> 00 - Read port A
+Reading A
+
+* Reg 1 -> 00
+* Reg 0 <- 00
+* Reg 1 <- 01
+* Reg 0 -> 00
+eading A     
+* Reg 1 -> 00
+* Reg 2 -> ff
+* Reg 3 -> fe
+* Reg 2 <- 00
+* Reg 3 <- 00
+* Reg 2 -> 00
+* Reg 3 -> 00
+* Reg 0 <- 00
+* Reg 1 <- 02
+* Reg 2 <- ff
+* Reg 3 <- fd
+* Reg 0 -> 00
+eading A     
+* Reg 1 -> 00
+* Reg 0 <- 00
+* Reg 1 <- 02
+* Reg 0 -> 00
+eading A     
+* Reg 1 -> 00
+* Reg 2 -> ff
+* Reg 3 -> fd
+* Reg 2 <- 00
+* Reg 3 <- 00
+* Reg 2 -> 00
+* Reg 3 -> 00
+* Reg 0 <- 00
+* Reg 1 <- 04
+* Reg 2 <- ff
+* Reg 3 <- fb
+* Reg 0 -> 00
+eading A     
+* Reg 1 -> 00
+* Reg 0 <- 00
+* Reg 1 <- 04
+* Reg 0 -> 00
+ *-------------------
+ *
+ * SCC init sequence
  * :scc B Reg 09 <- c0 - Master Interrupt Control - Device reset
  * -
  * :scc A Reg 0f <- 00 - External/Status Control Bits - Disable all 
