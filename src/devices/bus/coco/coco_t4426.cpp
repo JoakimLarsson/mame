@@ -55,6 +55,7 @@
 
 #include "emu.h"
 #include "coco_t4426.h"
+#include "includes/coco.h"
 
 /***************************************************************************
     CONSTANTS
@@ -62,6 +63,7 @@
 
 #define UART_TAG        "acia"
 #define PIA_TAG         "pia"
+#define CARTSLOT_TAG	"t4426"
 
 /***************************************************************************
     IMPLEMENTATION
@@ -71,6 +73,10 @@ static MACHINE_CONFIG_FRAGMENT(coco_t4426)
 	MCFG_DEVICE_ADD(UART_TAG, ACIA6850, 0)
 	MCFG_DEVICE_ADD(PIA_TAG, PIA6821, 0)
 MACHINE_CONFIG_END
+
+ROM_START( coco_t4426 )
+	ROM_REGION(0x8000, CARTSLOT_TAG, ROMREGION_ERASE00)
+ROM_END
 
 //**************************************************************************
 //  GLOBAL VARIABLES
@@ -85,12 +91,25 @@ const device_type COCO_T4426 = &device_creator<coco_t4426_device>;
 //-------------------------------------------------
 //  coco_t4426_device - constructor
 //-------------------------------------------------
+coco_t4426_device::coco_t4426_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source)
+	: device_t(mconfig, type, name, tag, owner, clock, shortname, source)
+	,device_cococart_interface( mconfig, *this )
+	,m_cart(nullptr)
+	,m_owner(nullptr)
+	,m_autostart(*this, ":" CART_AUTOSTART_TAG)
+	,m_uart(*this, UART_TAG)
+	,m_pia(*this, PIA_TAG)
+{
+}
 
 coco_t4426_device::coco_t4426_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-		: device_t(mconfig, COCO_T4426, "Terco CNC Programming Station 4426 multi cart", tag, owner, clock, "coco_t4426", __FILE__)
-		,device_cococart_interface( mconfig, *this )
-		,m_uart(*this, UART_TAG)
-		,m_pia(*this, PIA_TAG)
+	: device_t(mconfig, COCO_T4426, "Terco CNC Programming Station 4426 multi cart", tag, owner, clock, "coco_t4426", __FILE__)
+	,device_cococart_interface( mconfig, *this )
+	,m_cart(nullptr)
+	,m_owner(nullptr)
+	,m_autostart(*this, ":" CART_AUTOSTART_TAG)
+	,m_uart(*this, UART_TAG)
+	,m_pia(*this, PIA_TAG)
 {
 }
 
@@ -100,6 +119,8 @@ coco_t4426_device::coco_t4426_device(const machine_config &mconfig, const char *
 
 void coco_t4426_device::device_start()
 {
+	m_cart = dynamic_cast<device_image_interface *>(owner());
+	m_owner = dynamic_cast<cococart_slot_device *>(owner());
 }
 
 //-------------------------------------------------
@@ -110,6 +131,41 @@ void coco_t4426_device::device_start()
 machine_config_constructor coco_t4426_device::device_mconfig_additions() const
 {
 	return MACHINE_CONFIG_NAME( coco_t4426 );
+}
+
+//-------------------------------------------------
+//  rom_region - device-specific ROM region
+//-------------------------------------------------
+
+const tiny_rom_entry *coco_t4426_device::device_rom_region() const
+{
+	return ROM_NAME( coco_t4426 );
+}
+
+/*-------------------------------------------------
+    device_reset - device-specific startup
+-------------------------------------------------*/
+
+void coco_t4426_device::device_reset()
+{
+	if (m_cart->exists())
+	{
+		auto cart_line = m_autostart.read_safe(0x01)
+			? cococart_slot_device::line_value::Q
+			: cococart_slot_device::line_value::CLEAR;
+
+		// normal CoCo T4426s tie their CART line to Q - the system clock
+		m_owner->cart_set_line(cococart_slot_device::line::CART, cart_line);
+	}
+}
+
+/*-------------------------------------------------
+    get_cart_base
+-------------------------------------------------*/
+
+uint8_t* coco_t4426_device::get_cart_base()
+{
+	return memregion(CARTSLOT_TAG)->base();
 }
 
 /*-------------------------------------------------
