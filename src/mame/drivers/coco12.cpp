@@ -24,6 +24,7 @@
 ***************************************************************************/
 
 #include "includes/coco12.h"
+#include "bus/coco/coco_t4426.h"
 #include "bus/coco/coco_232.h"
 #include "bus/coco/coco_orch90.h"
 #include "bus/coco/coco_pak.h"
@@ -264,7 +265,9 @@ SLOT_INTERFACE_START( coco_cart )
 	SLOT_INTERFACE("multi", COCO_MULTIPAK)
 SLOT_INTERFACE_END
 
-
+SLOT_INTERFACE_START( t4426_cart )
+	SLOT_INTERFACE("t4426", COCO_T4426)
+SLOT_INTERFACE_END
 
 //-------------------------------------------------
 //  MACHINE_CONFIG_FRAGMENT( coco_sound )
@@ -392,6 +395,14 @@ static MACHINE_CONFIG_DERIVED( cp400, coco )
 	MCFG_COCO_CARTRIDGE_HALT_CB(INPUTLINE(MAINCPU_TAG, INPUT_LINE_HALT))
 MACHINE_CONFIG_END
 
+static MACHINE_CONFIG_DERIVED( t4426, coco2 )
+	MCFG_COCO_CARTRIDGE_REMOVE(CARTRIDGE_TAG)
+	MCFG_COCO_CARTRIDGE_ADD(CARTRIDGE_TAG, t4426_cart, "coco_t4426")
+	MCFG_COCO_CARTRIDGE_CART_CB(WRITELINE(coco_state, cart_w))
+	MCFG_COCO_CARTRIDGE_NMI_CB(INPUTLINE(MAINCPU_TAG, INPUT_LINE_NMI))
+	MCFG_COCO_CARTRIDGE_HALT_CB(INPUTLINE(MAINCPU_TAG, INPUT_LINE_HALT))
+MACHINE_CONFIG_END
+
 
 //**************************************************************************
 //  ROMS
@@ -455,4 +466,4 @@ COMP(  1985?,   coco2b,     coco,   0,      coco2b,    coco, driver_device,     
 COMP(  1984,    cp400,      coco,   0,      cp400,     coco, driver_device,      0,      "Prologica",            "CP400", 0)
 COMP(  1984,    lzcolor64,  coco,   0,      coco,      coco, driver_device,      0,      "Digiponto",            "LZ Color64", 0)
 COMP(  1984,    mx1600,     coco,   0,      coco,      coco, driver_device,      0,      "Dynacom",              "MX-1600", 0)
-COMP(  1986,    t4426,	    coco,   0,      coco,      coco, driver_device,      0,      "Terco AB",             "Terco 4426 CNC Programming station", MACHINE_IS_INCOMPLETE)
+COMP(  1986,    t4426,	    coco,   0,      t4426,     coco, driver_device,      0,      "Terco AB",             "Terco 4426 CNC Programming station", MACHINE_IS_INCOMPLETE)
