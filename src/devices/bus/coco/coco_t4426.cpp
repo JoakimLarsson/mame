@@ -37,7 +37,7 @@
  *
  ***************************************************************************/
 
-#define VERBOSE 0
+#define VERBOSE 2
 
 #define LOGPRINT(x) do { if (VERBOSE) logerror x; } while (0)
 #define LOG(x)      {} LOGPRINT(x)
@@ -76,7 +76,7 @@ MACHINE_CONFIG_END
 
 ROM_START( coco_t4426 )
 	ROM_REGION(0x8000, CARTSLOT_TAG, ROMREGION_ERASE00)
-	ROM_LOAD("tercoPMOS4426-8549-4.31.bin",   0x0000, 0x1000, CRC(bc65c45c) SHA1(e50cfd1d61e29fe05eb795d8bf6303e7b91ed8e5))
+	ROM_LOAD("tercoPMOS4426-8549-4.31.bin",   0x2000, 0x1000, CRC(bc65c45c) SHA1(e50cfd1d61e29fe05eb795d8bf6303e7b91ed8e5))
 ROM_END
 
 //**************************************************************************
@@ -149,6 +149,7 @@ const tiny_rom_entry *coco_t4426_device::device_rom_region() const
 
 void coco_t4426_device::device_reset()
 {
+#if 0
 	if (m_cart->exists())
 	{
 		auto cart_line = m_autostart.read_safe(0x01)
@@ -158,6 +159,9 @@ void coco_t4426_device::device_reset()
 		// normal CoCo T4426s tie their CART line to Q - the system clock
 		m_owner->cart_set_line(cococart_slot_device::line::CART, cart_line);
 	}
+#endif
+	auto cart_line = cococart_slot_device::line_value::Q;
+	m_owner->cart_set_line(cococart_slot_device::line::CART, cart_line);
 }
 
 /*-------------------------------------------------
