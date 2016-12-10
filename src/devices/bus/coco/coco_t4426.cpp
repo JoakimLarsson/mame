@@ -6,6 +6,8 @@
  *
  *  Terco T4426 CNC Programming Station multi cart
  *
+ *  The code here is heavily inspired by coco_pak and coco_232
+ *
  *  +-------------------------------------------------------------------------------+
  *  ||__|+-----+    oo   75                               |O ||||||||||||||| O|     |
  *  |XTL||MC   |    oo  110                                                         |
@@ -37,7 +39,7 @@
  *
  ***************************************************************************/
 
-#define VERBOSE 2
+#define VERBOSE 0
 
 #define LOGPRINT(x) do { if (VERBOSE) logerror x; } while (0)
 #define LOG(x)      {} LOGPRINT(x)
@@ -69,6 +71,7 @@
     IMPLEMENTATION
 ***************************************************************************/
 
+// TODO: Figure out address mapping for these devices
 static MACHINE_CONFIG_FRAGMENT(coco_t4426)
 	MCFG_DEVICE_ADD(UART_TAG, ACIA6850, 0)
 	MCFG_DEVICE_ADD(PIA_TAG, PIA6821, 0)
@@ -76,7 +79,11 @@ MACHINE_CONFIG_END
 
 ROM_START( coco_t4426 )
 	ROM_REGION(0x8000, CARTSLOT_TAG, ROMREGION_ERASE00)
-	ROM_LOAD("tercoPMOS4426-8549-4.31.bin",   0x2000, 0x1000, CRC(bc65c45c) SHA1(e50cfd1d61e29fe05eb795d8bf6303e7b91ed8e5))
+	// First of 8 banked ROM:s TODO: Add the banking and the other ROM:s 
+	ROM_LOAD("tercoED4426-0-8549-5.3.bin",  0x0000, 0x2000, CRC(45665428) SHA1(ff49a79275772c4c4ab1ae29db662c9b10a744a7)) 
+
+	// Main cartridge ROM
+	ROM_LOAD("tercoPMOS4426-8549-4.31.bin", 0x2000, 0x1000, CRC(bc65c45c) SHA1(e50cfd1d61e29fe05eb795d8bf6303e7b91ed8e5))
 ROM_END
 
 //**************************************************************************
@@ -92,6 +99,7 @@ const device_type COCO_T4426 = &device_creator<coco_t4426_device>;
 //-------------------------------------------------
 //  coco_t4426_device - constructor
 //-------------------------------------------------
+
 coco_t4426_device::coco_t4426_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source)
 	: device_t(mconfig, type, name, tag, owner, clock, shortname, source)
 	,device_cococart_interface( mconfig, *this )
@@ -149,17 +157,6 @@ const tiny_rom_entry *coco_t4426_device::device_rom_region() const
 
 void coco_t4426_device::device_reset()
 {
-#if 0
-	if (m_cart->exists())
-	{
-		auto cart_line = m_autostart.read_safe(0x01)
-			? cococart_slot_device::line_value::Q
-			: cococart_slot_device::line_value::CLEAR;
-
-		// normal CoCo T4426s tie their CART line to Q - the system clock
-		m_owner->cart_set_line(cococart_slot_device::line::CART, cart_line);
-	}
-#endif
 	auto cart_line = cococart_slot_device::line_value::Q;
 	m_owner->cart_set_line(cococart_slot_device::line::CART, cart_line);
 }
@@ -184,12 +181,8 @@ READ8_MEMBER(coco_t4426_device::read)
 	LOG(("%s()\n", FUNCNAME));
 	LOGSETUP((" * Offs:%02x -> %02x\n", offset, result));
 
-	//	if ((offset >= 0x28) && (offset <= 0x2F))
-	//		result = m_uart->read(space, offset - 0x28);
-
 	return result;
 }
-
 
 /*-------------------------------------------------
     write
@@ -199,7 +192,4 @@ WRITE8_MEMBER(coco_t4426_device::write)
 {
 	LOG(("%s(%02x)\n", FUNCNAME, data));
 	LOGSETUP((" * Offs:%02x <- %02x\n", offset, data));
-
-	//	if ((offset >= 0x28) && (offset <= 0x2F))
-	//	m_uart->write(space, offset - 0x28, data);
 }
