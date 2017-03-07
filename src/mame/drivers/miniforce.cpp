@@ -100,6 +100,7 @@
 #include "bus/vme/vme_fccpu20.h"
 #include "bus/vme/vme_fcisio.h"
 #include "bus/vme/vme_fcscsi.h"
+#include "bus/vme/vme_fcwfc.h"
 #include "bus/vme/vme_mzr8300.h"
 #include "bus/vme/vme_hcpu30.h"
 #include "machine/clock.h"
@@ -176,6 +177,7 @@ static void miniforce_vme_cards(device_slot_interface &device)
 	device.option_add("fccpu21", VME_FCCPU21);
 	device.option_add("fcisio", VME_FCISIO1);
 	device.option_add("fcscsi", VME_FCSCSI1);
+	device.option_add("fcwfc1", VME_FCWFC1);
 	device.option_add("hcpu30", VME_HCPU30);
 }
 
