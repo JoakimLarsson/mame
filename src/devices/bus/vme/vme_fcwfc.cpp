@@ -12,31 +12,31 @@
  *       ||                                                          | |   |
  * RUN   C|                                                          | |   |
  * R/L o-[|                                                          | |   |
- * LOC   C|                                                          | |   |
- * ERR   C|                                                          | |   |
- * BUSY  C|                                                          | |VME|
- *       ||                                                          | |   |
- *       ||                                                          | |P1 |
- *       ||                                                          | |   |
- *       ||                                                          | |   |
- *       ||                                                          | |   |
- *       ||                                                          | |   |
- *       ||                                                          | |   |
- *       ||                                                          | |   |
- *       ||                                                          |_|   |
+ * LOC   C|                 +------++------+                         | |   |
+ * ERR   C|                 |J28   ||J36   |                         | |   |
+ * BUSY  C|                 |WD2797||WD1015|                         | |VME|
+ *       ||                 |      ||      |                         | |   |
+ *       ||                 | FDC  || BMGR |                         | |P1 |
+ *       ||                 |      || ECC  |                         | |   |
+ *       ||                 |      ||      |                         | |   |
+ *       ||                 |      ||      |                         | |   |
+ *       ||                 |      ||      |                         | |   |
+ *       ||                 |      ||      |                         | |   |
+ *       ||                 |      ||      |                         | |   |
+ *       ||                 +------++------+                         |_|   |
  *       ||                                                            |___|
- *       ||                                                            |
- *       ||                                                            |
- *       ||                                                            |
- *       ||                                                            |
- *       ||                                                            |
- *       ||                                                            |
- *       ||                                                            |
- *       ||                                                            |
- *       ||                                                            |___
- *       ||                                                           _|   |
- *       ||                                                          | |   |
- *       ||                                                          | |   |
+ *       ||                 +------++------+                           |
+ *       ||                 |J27   ||J35   |                           |
+ *       ||                 |WD1014||WD1010|                           |
+ *       ||                 |      ||      |                           |
+ *       ||                 | EDSD || HDC  |                           |
+ *       ||                 |      ||      |                           |
+ *       ||                 |      ||      |                           |
+ *       ||                 |      ||      |                           |
+ *       ||                 |      ||      |                           |___
+ *       ||                 |      ||      |                          _|   |
+ *       ||                 |      ||      |                         | |   |
+ *       ||                 +------++------+                         | |   |
  *       ||                                                          | |   |
  *       ||                                                          | |   |
  *       ||                                                          | |VME|
@@ -68,7 +68,7 @@
  * - Generation at two different interrupts
  * - Jumper selectable interrupt level
  * - Software programmable interrupt vectors
- * - Three VMEbus options· (A31:D16), (A23:D16), (A15:D16) jumper selectable
+ * - Three VMEbus options: (A31:D16), (A23:D16), (A15:D16) jumper selectable
  * - User selectable 5.25" Winchester or Floppy operation
  * - Controls up to 3 Winchester ST506 Interface and up to 4 Floppy 
  *   drives SA450 compatible 
@@ -111,23 +111,18 @@
  ****************************************************************************/
 
 #include "emu.h"
-#include "vme_wfc.h"
+#include "cpu/mcs48/mcs48.h"
+#include "vme_fcwfc.h"
 
-#define LOG_GENERAL 0x01
-#define LOG_SETUP   0x02
-#define LOG_PRINTF  0x04
+//#define LOG_GENERAL (1U <<  0)
+#define LOG_SETUP   (1U <<  1)
 
-#define VERBOSE 0 //(LOG_PRINTF | LOG_SETUP  | LOG_GENERAL)
+//#define VERBOSE (LOG_GENERAL | LOG_SETUP )
+//#define LOG_OUTPUT_FUNC printf
 
-#define LOGMASK(mask, ...)   do { if (VERBOSE & mask) logerror(__VA_ARGS__); } while (0)
-#define LOGLEVEL(mask, level, ...) do { if ((VERBOSE & mask) >= level) logerror(__VA_ARGS__); } while (0)
+#include "logmacro.h"
 
-#define LOG(...)      LOGMASK(LOG_GENERAL, __VA_ARGS__)
-#define LOGSETUP(...) LOGMASK(LOG_SETUP,   __VA_ARGS__)
-
-#if VERBOSE & LOG_PRINTF
-#define logerror printf
-#endif
+#define LOGSETUP(...) LOGMASKED(LOG_SETUP, __VA_ARGS__)
 
 #ifdef _MSC_VER
 #define FUNCNAME __func__
@@ -135,27 +130,48 @@
 #define FUNCNAME __PRETTY_FUNCTION__
 #endif
 
+#define TODO "Driver for WD1015, WD2927, WD1014 and WD1010 needed\n"
+#define WD1015_TAG      "j36"
+
 //**************************************************************************
 //	GLOBAL VARIABLES
 //**************************************************************************
 
-const device_type VME_WFC1 = &device_creator<vme_wfc1_card_device>;
+const device_type VME_FCWFC1 = device_creator<vme_fcwfc1_card_device>;
 
-static ADDRESS_MAP_START (fcisio1_mem, AS_PROGRAM, 16, vme_fcisio1_card_device)
-	ADDRESS_MAP_UNMAP_HIGH
-//	AM_RANGE (0x000000, 0x000007) AM_ROM AM_READ (bootvect_r)       /* Vectors mapped from System EPROM */
-//	AM_RANGE (0x000000, 0x01ffff) AM_RAM /* SRAM */
-//	AM_RANGE (0xe00000, 0xe001ff) AM_DEVREADWRITE8("duscc0", duscc68562_device, read, write, 0x00ff)
-//	AM_RANGE (0xf00000, 0xf7ffff) AM_ROM /* System EPROM Area 32Kb DEBUGGER supplied */
-//  AM_RANGE (0xc40000, 0xc800ff) AM_READWRITE8 (not_implemented_r, not_implemented_w, 0xffff)  /* Dummy mapping af address area to display message */
+//-------------------------------------------------
+//  ADDRESS_MAP( wd1015_io )
+//-------------------------------------------------
+
+static ADDRESS_MAP_START( wd1015_io, AS_IO, 8, vme_fcwfc1_card_device )
+#if 0 // from wdxt_gen.cpp
+	AM_RANGE(0x00, 0xff) AM_DEVREADWRITE(WD11C00_17_TAG, wd11c00_17_device, read, write)
+	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_READ(wd1015_t0_r)
+	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_READ(wd1015_t1_r)
+	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READWRITE(wd1015_p1_r, wd1015_p1_w)
+	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_READWRITE(wd1015_p2_r, wd1015_p2_w)
+#endif
 ADDRESS_MAP_END
 
 /*
  * Machine configuration
  */
 static MACHINE_CONFIG_FRAGMENT (fcwfc1)
-	/* basic machine hardware */
+	MCFG_CPU_ADD(WD1015_TAG, I8049, 5000000)
+	MCFG_CPU_IO_MAP(wd1015_io)
 MACHINE_CONFIG_END
+
+//-------------------------------------------------
+//  machine_config_additions - device-specific
+//  machine configurations
+//-------------------------------------------------
+
+
+machine_config_constructor vme_fcwfc1_card_device::device_mconfig_additions() const
+{
+	LOG("%s %s\n", tag(), FUNCNAME);
+	return MACHINE_CONFIG_NAME( fcwfc1 );
+}
 
 /* ROM definitions */
 ROM_START (fcwfc1)
@@ -167,27 +183,15 @@ ROM_END
 vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source) :
 	device_t(mconfig, type, name, tag, owner, clock, shortname, source)
 	,device_vme_card_interface(mconfig, *this)
-	,m_maincpu (*this, "maincpu")
-	,m_duscc0(*this, "duscc0")
-	,m_duscc1(*this, "duscc1")
-	,m_duscc2(*this, "duscc2")
-	,m_duscc3(*this, "duscc3")
-	,m_pit (*this, "pit")
-	,m_bim (*this, "bim")
+	,m_maincpu (*this, WD1015_TAG)
 {
 	LOG("%s\n", FUNCNAME);
 }
 
 vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-	device_t(mconfig, VME_FCWFC1, "Force Computer SYS68K/ISIO-1/2 Intelligent Serial I/O Board", tag, owner, clock, "fcwfc1", __FILE__)
+	device_t(mconfig, VME_FCWFC1, "Force Computer SYS68K/WFC-1 Floppy and Winchester Controller Board", tag, owner, clock, "fcwfc1", __FILE__)
 	,device_vme_card_interface(mconfig, *this)
-	,m_maincpu(*this, "maincpu")
-	,m_duscc0(*this, "duscc0")
-	,m_duscc1(*this, "duscc1")
-	,m_duscc2(*this, "duscc2")
-	,m_duscc3(*this, "duscc3")
-	,m_pit (*this, "pit")
-	,m_bim (*this, "bim")
+	,m_maincpu (*this, WD1015_TAG)
 {
 	LOG("%s %s\n", tag, FUNCNAME);
 }
@@ -198,17 +202,11 @@ void vme_fcwfc1_card_device::device_start()
 	LOG("%s\n", FUNCNAME);
 	set_vme_device();
 
-	/* Setup pointer to bootvector in ROM for bootvector handler bootvect_r */
-	m_sysrom = (uint16_t*)(memregion ("maincpu")->base () + 0xf00000);
+	uint32_t base = 0xFCB01000; // Miniforce default base + offset 0-f TODO: Make configurable
 
-#if 0 // TODO: Setup VME access handlers for shared memory area
-	uint32_t base = 0xFFFF5000;
-	m_vme->install_device(base + 0, base + 1, // Channel B - Data
-							 read8_delegate(FUNC(z80sio_device::db_r),  subdevice<z80sio_device>("pit")), write8_delegate(FUNC(z80sio_device::db_w), subdevice<z80sio_device>("pit")), 0x00ff);
-	m_vme->install_device(base + 2, base + 3, // Channel B - Control
-							 read8_delegate(FUNC(z80sio_device::cb_r),  subdevice<z80sio_device>("pit")), write8_delegate(FUNC(z80sio_device::cb_w), subdevice<z80sio_device>("pit")), 0x00ff);
-#endif
-
+	m_vme->install_device(vme_device::A24_SC, base      , base + 0x0f, // Dual ported RAM A24:D8
+						  read8_delegate(FUNC(vme_fcwfc1_card_device::not_implemented_r), this),
+						  write8_delegate(FUNC(vme_fcwfc1_card_device::not_implemented_w), this), 0xffffffff);
 }
 
 void vme_fcwfc1_card_device::device_reset()
@@ -220,7 +218,7 @@ READ8_MEMBER (vme_fcwfc1_card_device::not_implemented_r){
 	static int been_here = 0;
 	if (!been_here++){
 		logerror(TODO);
-		printf(TODO);
+		LOG(TODO);
 	}
 	return (uint8_t) 0;
 }
@@ -229,7 +227,7 @@ WRITE8_MEMBER (vme_fcwfc1_card_device::not_implemented_w){
 	static int been_here = 0;
 	if (!been_here++){
 		logerror(TODO);
-		printf(TODO);
+		LOG(TODO);
 	}
 	return;
 }
