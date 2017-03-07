@@ -144,7 +144,7 @@ const device_type VME_FCWFC1 = device_creator<vme_fcwfc1_card_device>;
 //-------------------------------------------------
 
 static ADDRESS_MAP_START( wd1015_io, AS_IO, 8, vme_fcwfc1_card_device )
-#if 0 // from wdxt_gen.cpp
+#if 0 // from wdxt_gen.cpp TODO: Check schematics and hook up stuff accordingly
 	AM_RANGE(0x00, 0xff) AM_DEVREADWRITE(WD11C00_17_TAG, wd11c00_17_device, read, write)
 	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_READ(wd1015_t0_r)
 	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_READ(wd1015_t1_r)
@@ -173,9 +173,20 @@ machine_config_constructor vme_fcwfc1_card_device::device_mconfig_additions() co
 	return MACHINE_CONFIG_NAME( fcwfc1 );
 }
 
-/* ROM definitions */
+/* ROM definitions 
+ * ROM has the following copyright string: 
+ *  #Copyright (C) 1983 Western Digital Corporation  Written by Chandru Sippy & Michael Friese
+ */
 ROM_START (fcwfc1)
+	ROM_REGION( 0x800, WD1015_TAG, 0 )
+	ROM_LOAD( "WD1015-10.BIN", 0x000, 0x800, CRC(85dfe326) SHA1(f54803da3668193a3470ee0e24e3ea47ae605ec3) )
 ROM_END
+
+const tiny_rom_entry *vme_fcwfc1_card_device::device_rom_region() const
+{
+	LOG("%s\n", FUNCNAME);
+	return ROM_NAME( fcwfc1 );
+}
 
 //**************************************************************************
 //  LIVE DEVICE
