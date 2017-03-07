@@ -1511,6 +1511,8 @@ if (BUSES["VME"]~=null) then
 		MAME_DIR .. "src/devices/bus/vme/vme_fcisio.h",
 		MAME_DIR .. "src/devices/bus/vme/vme_fcscsi.cpp",
 		MAME_DIR .. "src/devices/bus/vme/vme_fcscsi.h",
+		MAME_DIR .. "src/devices/bus/vme/vme_fcwfc.cpp",
+		MAME_DIR .. "src/devices/bus/vme/vme_fcwfc.h",
 	}
 end
 

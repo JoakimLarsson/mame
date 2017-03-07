@@ -100,6 +100,7 @@
 #include "bus/vme/vme_fccpu20.h"
 #include "bus/vme/vme_fcisio.h"
 #include "bus/vme/vme_fcscsi.h"
+#include "bus/vme/vme_fcwfc.h"
 #include "bus/vme/vme_mzr8300.h"
 #include "machine/clock.h"
 
@@ -168,6 +169,7 @@ static SLOT_INTERFACE_START(miniforce_vme_cards)
 	SLOT_INTERFACE("fccpu21", VME_FCCPU21)
 	SLOT_INTERFACE("fcisio", VME_FCISIO1)
 	SLOT_INTERFACE("fcscsi", VME_FCSCSI1)
+	SLOT_INTERFACE("fcwfc1", VME_FCWFC1)
 SLOT_INTERFACE_END
 
 /*
