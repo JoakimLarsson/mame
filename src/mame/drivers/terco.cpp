@@ -11,9 +11,17 @@
  *
  * Known products
  * --------------
- * T4426 - CNC Programming Station, a ruggedized Tandy Color Computer + monitor in a metal case (see coco12.cpp)
- * T4490 - CNC Control System, a complete system including a small milling machine, can be programmed by T4426
- * T???? - A CAD/CAM sold in small numbers, an office computer based on a Tandy Color Computer PCB + two floppy drives
+ * T4423    - Paper Tape Punch reader/writer
+ * T4426    - CNC Programming Station, a ruggedized Tandy Color Computer + monitor in a metal case (see coco12.cpp)
+ * T4440/41 - Milltrainer CNC, a small basic milling machine with no electronics apart from the stepper motors. 
+ * T4437    - Datasette, Cassette Recorder
+ * T4444    - Plotter, TRS-80 Multipen Plotter
+ * T4445    - Printer
+ * T4459    - Plotter, FP-215 TRS80 Flatbed Plotter
+ * T4490    - CNC Control System, the big variant for T44440/41 contained stepper motor drivers while the small variant 
+ *            used with T4500 with stepper cards in the milling machine
+ * T4500    - Milling machine CNC, large machine with stepper motor drivers and tool switcher built in
+ * T????    - A CAD/CAM sold in small numbers, an office computer based on a Tandy Color Computer PCB + two floppy drives
  *
  * Misc links about the machines supported by this driver.
  *--------------------------------------------------------
@@ -25,7 +33,7 @@
  * ------
  *  - Display
  *  - Clickable Artwork
- *  - Serial communication for printer, plotter, paper tape and downlaod from the T4426
+ *  - Serial communication for printer, plotter, paper tape and download from the T4426
  *  - Identify expansion bus
  *  - Keyboard Controller
  *  - Dump keyboard ROM
