@@ -27,6 +27,7 @@
 #include "speaker.h"
 #include "machine/wd_fdc.h"
 #include "bus/isa/isa.h"
+#include "bus/isa/myb3k_com.h"
 #include "video/mc6845.h"
 #include "screen.h"
 
@@ -381,7 +382,7 @@ static SLOT_INTERFACE_START( myb3k_floppies )
 SLOT_INTERFACE_END
 
 static SLOT_INTERFACE_START(stepone_isa_cards)
-//	SLOT_INTERFACE("fccpu21", VME_FCCPU21)
+	SLOT_INTERFACE("myb3k_com", ISA8_MYB3K_COM)
 SLOT_INTERFACE_END
 
 static MACHINE_CONFIG_START( myb3k )
