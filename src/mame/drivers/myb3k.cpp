@@ -26,6 +26,7 @@
 #include "sound/spkrdev.h"
 #include "speaker.h"
 #include "machine/wd_fdc.h"
+#include "bus/isa/isa.h"
 #include "video/mc6845.h"
 #include "screen.h"
 
@@ -61,6 +62,7 @@ public:
 		, m_floppy1(*this, "fdc:1")
 		, m_p_vram(*this, "p_vram")
 		, m_palette(*this, "palette")
+		, m_isabus(*this, "isa")
 	{ }
 
 	DECLARE_WRITE8_MEMBER(myb3k_6845_address_w);
@@ -86,6 +88,7 @@ protected:
 	required_device<floppy_connector> m_floppy1;
 	required_shared_ptr<uint8_t> m_p_vram;
 	required_device<palette_device> m_palette;
+	required_device<isa8_device> m_isabus;
 	uint8_t m_crtc_vreg[0x100],m_crtc_index;
 	uint8_t m_vmode;
 	virtual void machine_start() override;
@@ -377,12 +380,21 @@ static SLOT_INTERFACE_START( myb3k_floppies )
 	SLOT_INTERFACE( "8dsdd", FLOPPY_8_DSDD )
 SLOT_INTERFACE_END
 
+static SLOT_INTERFACE_START(stepone_isa_cards)
+//	SLOT_INTERFACE("fccpu21", VME_FCCPU21)
+SLOT_INTERFACE_END
+
 static MACHINE_CONFIG_START( myb3k )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8088, XTAL_14_31818MHz / 3) /* 14.3182 main crystal divided by three through a 8284A */
 	MCFG_CPU_PROGRAM_MAP(myb3k_map)
 	MCFG_CPU_IO_MAP(myb3k_io)
 	MCFG_CPU_IRQ_ACKNOWLEDGE_DEVICE("pic", pic8259_device, inta_cb)
+
+	/* Expansion  bus */
+	MCFG_DEVICE_ADD("isa", ISA8, 0)
+	MCFG_ISA8_CPU(":maincpu")
+	MCFG_ISA8_SLOT_ADD("isa", "isa1", stepone_isa_cards, nullptr, false)
 
 	/* Interrupt Controller */
 	MCFG_DEVICE_ADD("pic", PIC8259, 0)
