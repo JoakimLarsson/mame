@@ -33,6 +33,12 @@ protected:
 
 	// optional information overrides
 	virtual void device_add_mconfig(machine_config &config) override;
+	virtual ioport_constructor device_input_ports() const override;
+
+	required_ioport m_iobase;
+	required_ioport m_isairq;
+	bool m_installed;
+	int m_irq;
 };
 
 
