@@ -6,10 +6,6 @@
 
 TODO:
  - Check if this board was manufactured by Matsushita or specific to the Step/One system
- - Add missing logic
- - Fix interrupt handler
- - Add configuration switches
- - Install card according to switch settings into io map
  - Put it into global ISA8 collection
 
 *********************************************************************************/
@@ -36,24 +32,27 @@ DEFINE_DEVICE_TYPE(ISA8_MYB3K_COM, isa8_myb3k_com_device, "isa8_myb3k_com", "ADP
 //  device_add_mconfig - add device configuration
 //-------------------------------------------------
 MACHINE_CONFIG_MEMBER( isa8_myb3k_com_device::device_add_mconfig )
-	MCFG_DEVICE_ADD( "usart0", I8251, XTAL_15_9744MHz / 8 )
+	MCFG_DEVICE_ADD( "usart", I8251, XTAL_15_9744MHz / 8 )
 	MCFG_I8251_TXD_HANDLER(DEVWRITELINE("com1", rs232_port_device, write_txd))
 	MCFG_I8251_DTR_HANDLER(DEVWRITELINE("com1", rs232_port_device, write_dtr))
 	MCFG_I8251_RTS_HANDLER(DEVWRITELINE("com1", rs232_port_device, write_rts))
-	MCFG_I8251_RXRDY_HANDLER(WRITELINE(isa8_myb3k_com_device, myb3k_com_int))
-	MCFG_I8251_TXRDY_HANDLER(WRITELINE(isa8_myb3k_com_device, myb3k_com_int))
+	MCFG_I8251_RXRDY_HANDLER(WRITELINE(isa8_myb3k_com_device, com_int_rx))
+	MCFG_I8251_TXRDY_HANDLER(WRITELINE(isa8_myb3k_com_device, com_int_tx))
 
 	MCFG_RS232_PORT_ADD( "com1", isa8_myb3k_com, nullptr )
-	MCFG_RS232_RXD_HANDLER(DEVWRITELINE("usart0", i8251_device, write_rxd))
-	MCFG_RS232_DSR_HANDLER(DEVWRITELINE("usart0", i8251_device, write_dsr))
-	MCFG_RS232_CTS_HANDLER(DEVWRITELINE("usart0", i8251_device, write_cts))
+	MCFG_RS232_RXD_HANDLER(DEVWRITELINE("usart", i8251_device, write_rxd))
+	MCFG_RS232_DSR_HANDLER(DEVWRITELINE("usart", i8251_device, write_dsr))
+	MCFG_RS232_CTS_HANDLER(DEVWRITELINE("usart", i8251_device, write_cts))
+	MCFG_RS232_RI_HANDLER(WRITELINE(isa8_myb3k_com_device, ri_w))
+	MCFG_RS232_DCD_HANDLER(WRITELINE(isa8_myb3k_com_device, dcd_w))
+	// TODO: configure RxC and TxC from RS232 connector when these are defined is rs232.h
 
 	/* Timer chip */
 	MCFG_DEVICE_ADD("pit", PIT8253, 0)
 	MCFG_PIT8253_CLK0(XTAL_15_9744MHz / 8 ) /* TxC */
-	MCFG_PIT8253_OUT0_HANDLER(DEVWRITELINE("usart0", i8251_device, write_txc))
+	MCFG_PIT8253_OUT0_HANDLER(WRITELINE(isa8_myb3k_com_device, pit_txc))
 	MCFG_PIT8253_CLK1(XTAL_15_9744MHz / 8 ) /* RxC */
-	MCFG_PIT8253_OUT1_HANDLER(DEVWRITELINE("usart0", i8251_device, write_rxc))
+	MCFG_PIT8253_OUT1_HANDLER(WRITELINE(isa8_myb3k_com_device, pit_rxc))
 	// Timer 2 is not used/connected to anything on the schematics
 MACHINE_CONFIG_END
 
@@ -76,8 +75,11 @@ isa8_myb3k_com_device::isa8_myb3k_com_device(const machine_config &mconfig, devi
 	, device_isa8_card_interface(mconfig, *this)
 	, m_iobase(*this, "DPSW1")
 	, m_isairq(*this, "DPSW2")
+	, m_usart(* this, "usart")
 	, m_installed(false)
 	, m_irq(4)
+	, m_control(0)
+	, m_status(0)
 {
 }
 
@@ -101,11 +103,15 @@ void isa8_myb3k_com_device::device_reset()
 		// IO base factory setting is 0x540
 		uint32_t base = m_iobase->read();
 		m_isa->install_device(base, base,
-					read8_delegate(FUNC(i8251_device::data_r), subdevice<i8251_device>("usart0")),
-					write8_delegate(FUNC(i8251_device::data_w), subdevice<i8251_device>("usart0")) );
+					read8_delegate(FUNC(i8251_device::data_r), subdevice<i8251_device>("usart")),
+					write8_delegate(FUNC(i8251_device::data_w), subdevice<i8251_device>("usart")) );
 		m_isa->install_device(base + 1, base + 1,
-					read8_delegate(FUNC(i8251_device::status_r), subdevice<i8251_device>("usart0")),
-					write8_delegate(FUNC(i8251_device::control_w), subdevice<i8251_device>("usart0")) );
+					read8_delegate(FUNC(i8251_device::status_r), subdevice<i8251_device>("usart")),
+					write8_delegate(FUNC(i8251_device::control_w), subdevice<i8251_device>("usart")) );
+		
+		m_isa->install_device(base + 2, base + 2,
+					read8_delegate(FUNC(isa8_myb3k_com_device::dce_status), this),
+					write8_delegate(FUNC(isa8_myb3k_com_device::dce_control), this) );
 		
 		m_isa->install_device(base + 4, base + 7,
 					read8_delegate(FUNC(pit8253_device::read), subdevice<pit8253_device>("pit")),
@@ -116,9 +122,75 @@ void isa8_myb3k_com_device::device_reset()
 	}
 }
 
-WRITE_LINE_MEMBER(isa8_myb3k_com_device::myb3k_com_int)
+//-----------------------------------------------------------
+// pit_rxc - write receive clock if pit is selected source 
+//-----------------------------------------------------------
+#define CLK_SEL 0x80
+WRITE_LINE_MEMBER(isa8_myb3k_com_device::pit_rxc)
 {
-  // TODO: Implement proper interrupt logics 
+	if ((m_control & CLK_SEL) != 0)
+	{
+		m_usart->write_rxc(state);
+	}
+}
+
+//------------------------------------------------------------
+// pit_txc - write transmit clock if pit is selected source 
+//------------------------------------------------------------
+WRITE_LINE_MEMBER(isa8_myb3k_com_device::pit_txc)
+{
+	if ((m_control & CLK_SEL) != 0)
+	{
+		m_usart->write_txc(state);
+	}
+}
+
+//-----------------------------------------------------------
+// rem_rxc - write receive clock if remote clock is selected
+//             source, eg for synchronous modes
+//-----------------------------------------------------------
+WRITE_LINE_MEMBER(isa8_myb3k_com_device::rem_rxc)
+{
+	if ((m_control & CLK_SEL) == 0)
+	{
+		m_usart->write_rxc(state);
+	}
+}
+
+//------------------------------------------------------------
+// rem_txc - write transmit clock if remote cloc is selected
+//             source, eg for synchronous modes
+//------------------------------------------------------------
+WRITE_LINE_MEMBER(isa8_myb3k_com_device::rem_txc)
+{
+	if ((m_control & CLK_SEL) == 0)
+	{
+		m_usart->write_txc(state);
+	}
+}
+
+//------------------------------------------------
+// com_int_rx -  signal selected interrup on ISA bus
+//------------------------------------------------
+WRITE_LINE_MEMBER(isa8_myb3k_com_device::com_int_rx)
+{
+	m_irq_rx = state;
+	com_int();
+}
+
+//------------------------------------------------
+// com_int_tx -  signal selected interrup on ISA bus
+//------------------------------------------------
+WRITE_LINE_MEMBER(isa8_myb3k_com_device::com_int_tx)
+{
+	m_irq_tx = state;
+	com_int();
+}
+
+void isa8_myb3k_com_device::com_int()
+{
+	int state = (m_irq_tx | m_irq_rx) ? ASSERT_LINE : CLEAR_LINE;
+
 	// Schematics allows for more than one interrupt to be triggered but there is probably only one jumper
 	switch (m_irq)
 	{
@@ -127,6 +199,60 @@ WRITE_LINE_MEMBER(isa8_myb3k_com_device::myb3k_com_int)
 	case 4:	m_isa->irq4_w(state); break;
 	case 5:	m_isa->irq5_w(state); break;
 	}
+}
+
+//------------------------------------------------
+// dcd_w - DCD line value gated by a LS368 
+//------------------------------------------------
+#define DCD_BIT 0x02
+WRITE_LINE_MEMBER(isa8_myb3k_com_device::dcd_w)
+{
+	if (state == ASSERT_LINE)
+	{
+		m_status |= DCD_BIT;
+	}
+	else
+	{
+		m_status &= ~DCD_BIT;
+	}
+}
+
+//------------------------------------------------
+// ri_w - RI line value gated by a LS368 
+//------------------------------------------------
+#define RI_BIT 0x01
+WRITE_LINE_MEMBER(isa8_myb3k_com_device::ri_w)
+{
+	if (state == ASSERT_LINE)
+	{
+		m_status |= RI_BIT;
+	}
+	else
+	{
+		m_status &= ~RI_BIT;
+	}
+}
+
+//------------------------------------------------
+// dce_control - 
+//------------------------------------------------
+#define TX_IRQ_RESET_BIT 0x40
+WRITE8_MEMBER(isa8_myb3k_com_device::dce_control)
+{
+	m_control = data;
+	if (m_control & TX_IRQ_RESET_BIT)
+	{
+		m_irq_tx = 0;
+		com_int();
+	}
+}
+
+//------------------------------------------------
+// dce_status - open LS368 gate and read status
+//------------------------------------------------
+READ8_MEMBER(isa8_myb3k_com_device::dce_status)
+{
+	return m_status;
 }
 
 
