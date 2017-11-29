@@ -19,6 +19,7 @@ TODO:
 #include "bus/rs232/rs232.h"
 #include "bus/rs232/null_modem.h"
 #include "machine/i8251.h"
+#include "machine/pit8253.h"
 
 static SLOT_INTERFACE_START(isa8_myb3k_com)
 	SLOT_INTERFACE("null_modem", NULL_MODEM)
@@ -46,6 +47,14 @@ MACHINE_CONFIG_MEMBER( isa8_myb3k_com_device::device_add_mconfig )
 	MCFG_RS232_RXD_HANDLER(DEVWRITELINE("usart0", i8251_device, write_rxd))
 	MCFG_RS232_DSR_HANDLER(DEVWRITELINE("usart0", i8251_device, write_dsr))
 	MCFG_RS232_CTS_HANDLER(DEVWRITELINE("usart0", i8251_device, write_cts))
+
+	/* Timer chip */
+	MCFG_DEVICE_ADD("pit", PIT8253, 0)
+	MCFG_PIT8253_CLK0(XTAL_15_9744MHz / 8 ) /* TxC */
+	MCFG_PIT8253_OUT0_HANDLER(DEVWRITELINE("usart0", i8251_device, write_txc))
+	MCFG_PIT8253_CLK1(XTAL_15_9744MHz / 8 ) /* RxC */
+	MCFG_PIT8253_OUT1_HANDLER(DEVWRITELINE("usart0", i8251_device, write_rxc))
+	// Timer 2 is not used/connected to anything on the schematics
 MACHINE_CONFIG_END
 
 // PORT definitions moved to the end of this file as it became very long
@@ -78,7 +87,6 @@ isa8_myb3k_com_device::isa8_myb3k_com_device(const machine_config &mconfig, devi
 //-------------------------------------------------
 void isa8_myb3k_com_device::device_start()
 {
-	// IO base factory setting is 0x540
 	set_isa_device();
 	m_installed = false;
 }
@@ -90,6 +98,7 @@ void isa8_myb3k_com_device::device_reset()
 {
 	if (!m_installed)
 	{
+		// IO base factory setting is 0x540
 		uint32_t base = m_iobase->read();
 		m_isa->install_device(base, base,
 					read8_delegate(FUNC(i8251_device::data_r), subdevice<i8251_device>("usart0")),
@@ -98,6 +107,10 @@ void isa8_myb3k_com_device::device_reset()
 					read8_delegate(FUNC(i8251_device::status_r), subdevice<i8251_device>("usart0")),
 					write8_delegate(FUNC(i8251_device::control_w), subdevice<i8251_device>("usart0")) );
 		
+		m_isa->install_device(base + 4, base + 7,
+					read8_delegate(FUNC(pit8253_device::read), subdevice<pit8253_device>("pit")),
+					write8_delegate(FUNC(pit8253_device::write), subdevice<pit8253_device>("pit")) );
+
 		m_irq = m_isairq->read();
 		m_installed = true;
 	}

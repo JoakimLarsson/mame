@@ -408,11 +408,11 @@ static MACHINE_CONFIG_START( myb3k )
 
 	/* Timer chip */
 	MCFG_DEVICE_ADD("pit", PIT8253, 0)
-	MCFG_PIT8253_CLK0(XTAL_14_31818MHz/12.0) /* TIMINT straight into IRQ0 */
+	MCFG_PIT8253_CLK0(XTAL_14_31818MHz / 12.0) /* TIMINT straight into IRQ0 */
 	MCFG_PIT8253_OUT0_HANDLER(DEVWRITELINE("pic", pic8259_device, ir0_w))
-	MCFG_PIT8253_CLK1(XTAL_14_31818MHz/12.0) /* speaker if port c bit 5 is low */
+	MCFG_PIT8253_CLK1(XTAL_14_31818MHz / 12.0) /* speaker if port c bit 5 is low */
 	MCFG_PIT8253_OUT1_HANDLER(WRITELINE(myb3k_state, pit_out1_changed))
-//	MCFG_PIT8253_CLK2(XTAL_14_31818MHz/12.0) /* ANDed with port c bit 6 but marked as "not use"*/
+//	MCFG_PIT8253_CLK2(XTAL_14_31818MHz / 12.0) /* ANDed with port c bit 6 but marked as "not use"*/
 //	MCFG_PIT8253_OUT2_HANDLER(WRITELINE(myb3k_state, pit_out2_changed))
 
 	/* sound hardware */
