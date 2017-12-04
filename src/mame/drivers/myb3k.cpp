@@ -21,6 +21,7 @@
 #include "emu.h"
 #include "cpu/i86/i86.h"
 #include "machine/i8255.h"
+#include "machine/keyboard.h"
 #include "machine/pic8259.h"
 #include "machine/pit8253.h"
 #include "sound/spkrdev.h"
@@ -30,6 +31,8 @@
 #include "bus/isa/myb3k_com.h"
 #include "video/mc6845.h"
 #include "screen.h"
+
+#define KEYBOARD_TAG        "keyboard"
 
 //#define LOG_GENERAL (1U << 0) //defined in logmacro.h already
 #define LOG_PPI     (1U << 1)
@@ -58,6 +61,7 @@ public:
 		, m_ppi8255(*this, "ppi8255")
 		, m_fdc(*this, "fdc")
 		, m_speaker(*this, "speaker")
+		, m_kb(*this, "keyboard")
 		, m_crtc(*this, "crtc")
 		, m_floppy0(*this, "fdc:0")
 		, m_floppy1(*this, "fdc:1")
@@ -65,6 +69,14 @@ public:
 		, m_palette(*this, "palette")
 		, m_isabus(*this, "isa")
 	{ }
+
+	enum
+	{
+		TIMER_ID_SECOND_KEY_BYTE
+	};
+
+	DECLARE_READ8_MEMBER(myb3k_kbd_r);
+	void kbd_put(u8 data);
 
 	DECLARE_WRITE8_MEMBER(myb3k_6845_address_w);
 	DECLARE_WRITE8_MEMBER(myb3k_6845_data_w);
@@ -84,22 +96,62 @@ protected:
 	required_device<i8255_device> m_ppi8255;
 	required_device<mb8876_device> m_fdc;
 	required_device<speaker_sound_device>   m_speaker;
+	required_device<generic_keyboard_device> m_kb;
 	required_device<h46505_device> m_crtc;
 	required_device<floppy_connector> m_floppy0;
 	required_device<floppy_connector> m_floppy1;
 	required_shared_ptr<uint8_t> m_p_vram;
 	required_device<palette_device> m_palette;
 	required_device<isa8_device> m_isabus;
+	uint8_t m_kbd_latch; // 74L244 that latches the 74LS164 serial to parallel ic.
+	uint8_t m_kbd_second_byte;
 	uint8_t m_crtc_vreg[0x100],m_crtc_index;
 	uint8_t m_vmode;
 	virtual void machine_start() override;
 	virtual void machine_reset() override;
 	virtual void video_start() override;
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 };
 
 void myb3k_state::video_start()
 {
 }
+
+READ8_MEMBER( myb3k_state::myb3k_kbd_r )
+{
+	return m_kbd_latch;
+}
+
+#define MYB3K_KEY_ON 0x01
+#define MYB3K_KEY_CTRL 0x02
+#define MYB3K_KEY_GRAPH 0x04
+#define MYB3K_KEY_LSHIFT 0x08
+#define MYB3K_KEY_RSHIFT 0x10
+#define MYB3K_KEY_CAPS 0x20
+#define MYB3K_SECOND_KEY_BYTE 0x80
+
+void myb3k_state::kbd_put(u8 data) {
+	printf("KBD PUT %d\n", data);
+
+	// First byte
+	m_kbd_latch = MYB3K_KEY_ON;
+	m_kbd_second_byte = MYB3K_SECOND_KEY_BYTE | 0x09; // Just Y1 X1 = Function Key 1 top left.
+	m_pic->ir1_w(ASSERT_LINE);
+	timer_set(attotime::from_msec(3), TIMER_ID_SECOND_KEY_BYTE);
+}
+
+void myb3k_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	switch (id)
+	{
+	case TIMER_ID_SECOND_KEY_BYTE:
+		printf("SECOND_BYTE\n");
+		m_kbd_latch = m_kbd_second_byte;
+		m_pic->ir1_w(ASSERT_LINE);
+		break;
+	}
+}
+
 
 #define mc6845_h_char_total     (m_crtc_vreg[0])
 #define mc6845_h_display        (m_crtc_vreg[1])
@@ -204,14 +256,14 @@ WRITE8_MEMBER( myb3k_state::myb3k_fdc_output_w )
  * PORT C
  * 0 - PC0 - STROBE       - Printer handshake
  * 1 - PC1 - SET PAGE     - Video RAM page
- * 2 - PC2 - DISP ST      - 
- * 3 - PC3 - LPSTB        - Light Pen 
- * 4 - PC4 - CURS ODD/EVN - 
+ * 2 - PC2 - DISP ST      -
+ * 3 - PC3 - LPSTB        - Light Pen
+ * 4 - PC4 - CURS ODD/EVN -
  * 5 - PC5 - BUZON        - ON-OFF of speaker circuit
  * 6 - PC6 - CMTWD
  * 7 - PC7 - CMTEN        - Separation from cassette interface
  *
- * Mybrain 3000, JB-3000, Step/one SW1: (Service manual numbers switches 1-8)
+ * Mybrain 3000, JB-3000, Step/One SW1: (Service manual numbers switches 1-8)
  * 0   - Unused
  * 1   - Unused
  * 2+3 - Display Mode
@@ -231,7 +283,7 @@ WRITE8_MEMBER( myb3k_state::myb3k_fdc_output_w )
  *       OFF     - 5.25 inch Flexible Disk Drive
  *       ON      - 8 inch Flexible Disk Unit
  *
- * Mybrain 3000, JB-3000, Step/one SW2:  (Service manual numbers switches 1-8)
+ * Mybrain 3000, JB-3000, Step/One SW2:  (Service manual numbers switches 1-8)
  * 0   - Check Mode (BIOS version info on boot screen)
  *       OFF     - Yes
  *       ON      - No
@@ -251,7 +303,7 @@ static ADDRESS_MAP_START(myb3k_map, AS_PROGRAM, 8, myb3k_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000,0x3ffff) AM_RAM // It's either 128Kb or 256Kb RAM
 	AM_RANGE(0x40000,0x7ffff) AM_NOP
-	AM_RANGE(0x80000,0xcffff) AM_NOP // Expansion Unit connected through an ISA8 cable 
+	AM_RANGE(0x80000,0xcffff) AM_NOP // Expansion Unit connected through an ISA8 cable
 	AM_RANGE(0xd0000,0xdffff) AM_RAM AM_SHARE("p_vram")  // Area 6, physical at 30000-3FFFF (128Kb RAM) or 10000-1FFFF (256KB RAM)
 	AM_RANGE(0xf0000,0xfffff) AM_ROM AM_REGION("ipl", 0) // Area 7, 8 x 8Kb
 ADDRESS_MAP_END
@@ -265,7 +317,7 @@ static ADDRESS_MAP_START(myb3k_io, AS_IO, 8, myb3k_state)
 //	AM_RANGE(0x01, 0x01) AM_READ_PORT("DSW1")
 //	AM_RANGE(0x03, 0x03) AM_WRITENOP // Port C bit manipulation b0=value b1-b3=bit number
 // Discrete latches
-//	AM_RANGE(0x04, 0x04) AM_READ(myb3k_kbd_r)
+	AM_RANGE(0x04, 0x04) AM_READ(myb3k_kbd_r)
 	AM_RANGE(0x04, 0x04) AM_WRITE(myb3k_video_mode_w) // b0=40CH, b1=80CH, b2=16 raster
 //	AM_RANGE(0x05, 0x05) AM_READ(myb3k_io_status_r)
 //	AM_RANGE(0x05, 0x05) AM_WRITE(myb3k_dma_segment_w) // b0-b3=addr, b6=A b7=B
@@ -290,7 +342,7 @@ static ADDRESS_MAP_START(myb3k_io, AS_IO, 8, myb3k_state)
 //	AM_RANGE(0x800,0xfff) // Expansion Unit
 ADDRESS_MAP_END
 
-/* Input ports - from step/one service manual */
+/* Input ports - from Step/One service manual */
 static INPUT_PORTS_START( myb3k )
 	PORT_START("DSW1")
 	PORT_DIPUNUSED_DIPLOC(0x01, 0x01, "SW1:1")
@@ -334,6 +386,7 @@ INPUT_PORTS_END
 
 void myb3k_state::machine_start()
 {
+	m_kbd_latch = 0;
 }
 
 void myb3k_state::machine_reset()
@@ -419,6 +472,9 @@ static MACHINE_CONFIG_START( myb3k )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	MCFG_DEVICE_ADD(KEYBOARD_TAG, GENERIC_KEYBOARD, 0)
+        MCFG_GENERIC_KEYBOARD_CB(PUT(myb3k_state, kbd_put))
 
 	/* video hardware */
 //	MCFG_SCREEN_ADD("screen", RASTER)
