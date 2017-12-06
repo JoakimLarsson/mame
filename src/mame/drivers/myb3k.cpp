@@ -21,7 +21,7 @@
 #include "emu.h"
 #include "cpu/i86/i86.h"
 #include "machine/i8255.h"
-#include "machine/keyboard.h"
+#include "machine/myb3k_kbd.h"
 #include "machine/pic8259.h"
 #include "machine/pit8253.h"
 #include "sound/spkrdev.h"
@@ -31,8 +31,6 @@
 #include "bus/isa/myb3k_com.h"
 #include "video/mc6845.h"
 #include "screen.h"
-
-#define KEYBOARD_TAG        "keyboard"
 
 //#define LOG_GENERAL (1U << 0) //defined in logmacro.h already
 #define LOG_PPI     (1U << 1)
@@ -61,7 +59,7 @@ public:
 		, m_ppi8255(*this, "ppi8255")
 		, m_fdc(*this, "fdc")
 		, m_speaker(*this, "speaker")
-		, m_kb(*this, "keyboard")
+		, m_kb(*this, "myb3k_keyboard")
 		, m_crtc(*this, "crtc")
 		, m_floppy0(*this, "fdc:0")
 		, m_floppy1(*this, "fdc:1")
@@ -70,13 +68,8 @@ public:
 		, m_isabus(*this, "isa")
 	{ }
 
-	enum
-	{
-		TIMER_ID_SECOND_KEY_BYTE
-	};
-
 	DECLARE_READ8_MEMBER(myb3k_kbd_r);
-	void kbd_put(u8 data);
+	void kbd_set_latch_and_interrupt(u8 data);
 
 	DECLARE_WRITE8_MEMBER(myb3k_6845_address_w);
 	DECLARE_WRITE8_MEMBER(myb3k_6845_data_w);
@@ -96,7 +89,7 @@ protected:
 	required_device<i8255_device> m_ppi8255;
 	required_device<mb8876_device> m_fdc;
 	required_device<speaker_sound_device>   m_speaker;
-	required_device<generic_keyboard_device> m_kb;
+	required_device<myb3k_keyboard_device> m_kb;
 	required_device<h46505_device> m_crtc;
 	required_device<floppy_connector> m_floppy0;
 	required_device<floppy_connector> m_floppy1;
@@ -110,7 +103,6 @@ protected:
 	virtual void machine_start() override;
 	virtual void machine_reset() override;
 	virtual void video_start() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) override;
 };
 
 void myb3k_state::video_start()
@@ -122,36 +114,10 @@ READ8_MEMBER( myb3k_state::myb3k_kbd_r )
 	return m_kbd_latch;
 }
 
-#define MYB3K_KEY_ON 0x01
-#define MYB3K_KEY_CTRL 0x02
-#define MYB3K_KEY_GRAPH 0x04
-#define MYB3K_KEY_LSHIFT 0x08
-#define MYB3K_KEY_RSHIFT 0x10
-#define MYB3K_KEY_CAPS 0x20
-#define MYB3K_SECOND_KEY_BYTE 0x80
-
-void myb3k_state::kbd_put(u8 data) {
-	printf("KBD PUT %d\n", data);
-
-	// First byte
-	m_kbd_latch = MYB3K_KEY_ON;
-	m_kbd_second_byte = MYB3K_SECOND_KEY_BYTE | 0x09; // Just Y1 X1 = Function Key 1 top left.
+void myb3k_state::kbd_set_latch_and_interrupt(u8 data) {
+	m_kbd_latch = data;
 	m_pic->ir1_w(ASSERT_LINE);
-	timer_set(attotime::from_msec(3), TIMER_ID_SECOND_KEY_BYTE);
 }
-
-void myb3k_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
-{
-	switch (id)
-	{
-	case TIMER_ID_SECOND_KEY_BYTE:
-		printf("SECOND_BYTE\n");
-		m_kbd_latch = m_kbd_second_byte;
-		m_pic->ir1_w(ASSERT_LINE);
-		break;
-	}
-}
-
 
 #define mc6845_h_char_total     (m_crtc_vreg[0])
 #define mc6845_h_display        (m_crtc_vreg[1])
@@ -473,8 +439,8 @@ static MACHINE_CONFIG_START( myb3k )
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_DEVICE_ADD(KEYBOARD_TAG, GENERIC_KEYBOARD, 0)
-        MCFG_GENERIC_KEYBOARD_CB(PUT(myb3k_state, kbd_put))
+	MCFG_DEVICE_ADD("myb3k_keyboard", MYB3K_KEYBOARD, 0)
+        MCFG_MYB3K_KEYBOARD_CB(PUT(myb3k_state, kbd_set_latch_and_interrupt))
 
 	/* video hardware */
 //	MCFG_SCREEN_ADD("screen", RASTER)
@@ -518,8 +484,8 @@ ROM_END
 
 ROM_START( stepone )
 	ROM_REGION( 0x10000, "ipl", ROMREGION_ERASEFF )
-	ROM_LOAD( "steponechrg-vx.y.bin", 0xc000, 0x2000, NO_DUMP)
-	ROM_LOAD( "steponebios-vx.y.bin", 0xe000, 0x2000, NO_DUMP)
+	ROM_LOAD( "steponechrg-v2.07.bin", 0xc000, 0x2000, CRC(8284a391) SHA1(7203c5e9d83be37c1c195946fbee5c53b1bce391))
+	ROM_LOAD( "steponebios-v2.07.bin", 0xe000, 0x2000, CRC(322c1618) SHA1(a7a3cc2af7cc9556007d98014714ba656f6e79d1))
 ROM_END
 
 /* Driver */
