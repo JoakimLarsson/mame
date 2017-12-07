@@ -69,7 +69,7 @@ public:
 	{ }
 
 	DECLARE_READ8_MEMBER(myb3k_kbd_r);
-	void kbd_set_latch_and_interrupt(u8 data);
+	void kbd_set_data_and_interrupt(u8 data);
 
 	DECLARE_WRITE8_MEMBER(myb3k_6845_address_w);
 	DECLARE_WRITE8_MEMBER(myb3k_6845_data_w);
@@ -96,7 +96,7 @@ protected:
 	required_shared_ptr<uint8_t> m_p_vram;
 	required_device<palette_device> m_palette;
 	required_device<isa8_device> m_isabus;
-	uint8_t m_kbd_latch; // 74L244 that latches the 74LS164 serial to parallel ic.
+	uint8_t m_kbd_data; // Data inside the 74LS164 serial to parallel converter.
 	uint8_t m_kbd_second_byte;
 	uint8_t m_crtc_vreg[0x100],m_crtc_index;
 	uint8_t m_vmode;
@@ -111,11 +111,14 @@ void myb3k_state::video_start()
 
 READ8_MEMBER( myb3k_state::myb3k_kbd_r )
 {
-	return m_kbd_latch;
+	// IN from port 0x04 enables a 74LS244 buffer that
+	// presents to the CPU the parallell bits from the 74LS164
+	// serial to parallel converter.
+	return m_kbd_data;
 }
 
-void myb3k_state::kbd_set_latch_and_interrupt(u8 data) {
-	m_kbd_latch = data;
+void myb3k_state::kbd_set_data_and_interrupt(u8 data) {
+	m_kbd_data = data;
 	m_pic->ir1_w(ASSERT_LINE);
 }
 
@@ -352,7 +355,7 @@ INPUT_PORTS_END
 
 void myb3k_state::machine_start()
 {
-	m_kbd_latch = 0;
+	m_kbd_data = 0;
 }
 
 void myb3k_state::machine_reset()
@@ -440,7 +443,7 @@ static MACHINE_CONFIG_START( myb3k )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_DEVICE_ADD("myb3k_keyboard", MYB3K_KEYBOARD, 0)
-        MCFG_MYB3K_KEYBOARD_CB(PUT(myb3k_state, kbd_set_latch_and_interrupt))
+        MCFG_MYB3K_KEYBOARD_CB(PUT(myb3k_state, kbd_set_data_and_interrupt))
 
 	/* video hardware */
 //	MCFG_SCREEN_ADD("screen", RASTER)
