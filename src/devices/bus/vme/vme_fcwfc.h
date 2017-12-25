@@ -6,18 +6,18 @@
 
 #include "bus/vme/vme.h"
 
-extern const device_type VME_FCWFC1;
+DECLARE_DEVICE_TYPE(VME_FCWFC1, vme_fcwfc1_card_device);
 
 class vme_fcwfc1_card_device :
 	public device_t
 	,public device_vme_card_interface
 {
 public:
-	vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source);
+	vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 	vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// optional information overrides
-	virtual machine_config_constructor device_mconfig_additions() const override;
+	virtual void device_add_mconfig(machine_config &config) override;
 	virtual const tiny_rom_entry *device_rom_region() const override;
 
 	/* Dummy driver routines */
@@ -32,5 +32,5 @@ private:
 	required_device<cpu_device> m_maincpu;
 };
 
-#endif // VME_FCWFC_H
+#endif // VME_FCWFC1_H
 

@@ -137,7 +137,8 @@
 //	GLOBAL VARIABLES
 //**************************************************************************
 
-const device_type VME_FCWFC1 = device_creator<vme_fcwfc1_card_device>;
+//const device_type VME_FCWFC1 = device_creator<vme_fcwfc1_card_device>;
+DEFINE_DEVICE_TYPE(VME_FCWFC1, vme_fcwfc1_card_device, "fcwfc1", "Force Computer SYS68K/WFC-1 Floppy and Winchester Controller Board");
 
 //-------------------------------------------------
 //  ADDRESS_MAP( wd1015_io )
@@ -156,7 +157,7 @@ ADDRESS_MAP_END
 /*
  * Machine configuration
  */
-static MACHINE_CONFIG_FRAGMENT (fcwfc1)
+MACHINE_CONFIG_MEMBER (vme_fcwfc1_card_device::device_add_mconfig)
 	MCFG_CPU_ADD(WD1015_TAG, I8049, 5000000)
 	MCFG_CPU_IO_MAP(wd1015_io)
 MACHINE_CONFIG_END
@@ -166,12 +167,13 @@ MACHINE_CONFIG_END
 //  machine configurations
 //-------------------------------------------------
 
-
+#if 0
 machine_config_constructor vme_fcwfc1_card_device::device_mconfig_additions() const
 {
 	LOG("%s %s\n", tag(), FUNCNAME);
 	return MACHINE_CONFIG_NAME( fcwfc1 );
 }
+#endif
 
 /* ROM definitions 
  * ROM has the following copyright string: 
@@ -191,18 +193,16 @@ const tiny_rom_entry *vme_fcwfc1_card_device::device_rom_region() const
 //**************************************************************************
 //  LIVE DEVICE
 //**************************************************************************
-vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source) :
-	device_t(mconfig, type, name, tag, owner, clock, shortname, source)
+vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock) :
+	device_t(mconfig, type, tag, owner, clock)
 	,device_vme_card_interface(mconfig, *this)
 	,m_maincpu (*this, WD1015_TAG)
 {
 	LOG("%s\n", FUNCNAME);
 }
 
-vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-	device_t(mconfig, VME_FCWFC1, "Force Computer SYS68K/WFC-1 Floppy and Winchester Controller Board", tag, owner, clock, "fcwfc1", __FILE__)
-	,device_vme_card_interface(mconfig, *this)
-	,m_maincpu (*this, WD1015_TAG)
+vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: vme_fcwfc1_card_device(mconfig, VME_FCWFC1, tag, owner, clock)
 {
 	LOG("%s %s\n", tag, FUNCNAME);
 }
