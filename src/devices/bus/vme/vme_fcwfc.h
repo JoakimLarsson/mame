@@ -19,12 +19,13 @@ public:
 	vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
-
 	// device-level overrides
-	virtual void device_add_mconfig(machine_config &config) override;
 	virtual void device_start() override;
 	virtual void device_reset() override;
+
+	// optional information overrides
+	virtual void device_add_mconfig(machine_config &config) override;
+	virtual const tiny_rom_entry *device_rom_region() const override;
 
 #if 0
 	DECLARE_WRITE8_MEMBER (complete_irq_vector_w);
@@ -56,6 +57,7 @@ protected:
 	DECLARE_WRITE8_MEMBER (dpram_w);
 	DECLARE_ADDRESS_MAP(map, 8);
 
+	required_device<cpu_device> m_maincpu;
 	required_device<wd2797_device> m_fdc;
 	required_device<floppy_connector> m_fdd0;
 	optional_device<floppy_connector> m_fdd1;
@@ -68,4 +70,3 @@ private:
 };
 
 #endif // VME_FCWFC1_H
-

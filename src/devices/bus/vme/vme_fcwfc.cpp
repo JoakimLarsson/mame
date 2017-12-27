@@ -111,7 +111,7 @@
  ****************************************************************************/
 
 #include "emu.h"
-//#include "cpu/mcs48/mcs48.h"
+#include "cpu/mcs48/mcs48.h"
 //#include "machine/wd11c00_17.h"
 #include "vme_fcwfc.h"
 #include "imagedev/flopdrv.h"
@@ -122,7 +122,7 @@
 #define LOG_SETUP   (1U <<  1)
 #define LOG_READ    (1U <<  2)
 
-#define VERBOSE (LOG_GENERAL | LOG_SETUP )
+#define VERBOSE (LOG_GENERAL | LOG_SETUP | LOG_READ)
 #define LOG_OUTPUT_FUNC printf
 
 #include "logmacro.h"
@@ -137,7 +137,7 @@
 #endif
 
 #define TODO "Driver for WD1015, WD1014 and WD1010 needed\n"
-#define WD1015_TAG      "j36"
+#define WD1015_TAG      "buf"
 #define WD2797_TAG	"fdc"
 
 //**************************************************************************
@@ -165,7 +165,6 @@ DEVICE_ADDRESS_MAP_START( map, 8, vme_fcwfc1_card_device )
 	AM_RANGE(0x0d, 0x0d) AM_READ(size_drive_head_r) AM_WRITE(size_drive_head_w)
 	AM_RANGE(0x0f, 0x0f) AM_READ(status_r) AM_WRITE(command_w)
 #else
-	AM_RANGE(0x0000, 0x000f) AM_READWRITE(dpram_r, dpram_w)
 	/* All these lines are ripped from wdxt_gen.cpp so need to be adjusted before being enabled in LLE */
 	AM_RANGE(0x00, 0xff) AM_DEVREADWRITE(WD11C00_17_TAG, wd11c00_17_device, read, write)
 	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_READ(wd1015_t0_r)
@@ -174,6 +173,10 @@ DEVICE_ADDRESS_MAP_START( map, 8, vme_fcwfc1_card_device )
 	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_READWRITE(wd1015_p2_r, wd1015_p2_w)
 #endif
 #endif
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( wd1015_io, AS_IO, 8, vme_fcwfc1_card_device )
+//	AM_RANGE(0x00, 0xff) AM_DEVREADWRITE(WD11C00_17_TAG, wd11c00_17_device, read, write)
 ADDRESS_MAP_END
 
 FLOPPY_FORMATS_MEMBER( vme_fcwfc1_card_device::fcwfc1_floppy_formats )
@@ -193,9 +196,9 @@ MACHINE_CONFIG_MEMBER (vme_fcwfc1_card_device::device_add_mconfig)
 	MCFG_FLOPPY_DRIVE_ADD("fdc:1", fcwfc1_floppies, "525sd", vme_fcwfc1_card_device::fcwfc1_floppy_formats)
 	MCFG_FLOPPY_DRIVE_ADD("fdc:2", fcwfc1_floppies, "525sd", vme_fcwfc1_card_device::fcwfc1_floppy_formats)
 	MCFG_FLOPPY_DRIVE_ADD("fdc:3", fcwfc1_floppies, "525sd", vme_fcwfc1_card_device::fcwfc1_floppy_formats)
-#if 0
 	MCFG_CPU_ADD(WD1015_TAG, I8049, 5000000)
-	MCFG_CPU_PROGRAM_MAP(wd1015_mem)
+	MCFG_CPU_PROGRAM_MAP(wd1015_io)
+#if 0
 	MCFG_MCS48_PORT_T0_IN_CB(DEVREADLINE(WD11C00_17_TAG, wd11c00_17_device, busy_r))
 	MCFG_MCS48_PORT_T1_IN_CB(READLINE(wdxt_gen_device, wd1015_t1_r))
 	MCFG_MCS48_PORT_P1_IN_CB(READ8(wdxt_gen_device, wd1015_p1_r))
@@ -215,29 +218,33 @@ MACHINE_CONFIG_END
  *  #Copyright (C) 1983 Western Digital Corporation  Written by Chandru Sippy & Michael Friese
  */
 ROM_START (fcwfc1)
-//	ROM_REGION( 0x800, WD1015_TAG, 0 )
-//	ROM_LOAD( "WD1015-10.BIN", 0x000, 0x800, CRC(85dfe326) SHA1(f54803da3668193a3470ee0e24e3ea47ae605ec3) )
+	ROM_REGION( 0x800, WD1015_TAG, 0 )
+	ROM_LOAD( "WD1015-10.BIN", 0x000, 0x800, CRC(85dfe326) SHA1(f54803da3668193a3470ee0e24e3ea47ae605ec3) )
 ROM_END
+
+//-------------------------------------------------
+//  rom_region - device-specific ROM region
+//-------------------------------------------------
+
+const tiny_rom_entry *vme_fcwfc1_card_device::device_rom_region() const
+{
+	return ROM_NAME( fcwfc1 );
+}
 
 //**************************************************************************
 //  LIVE DEVICE
 //**************************************************************************
-vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock) :
-	device_t(mconfig, type, tag, owner, clock)
+vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
+	device_t(mconfig, VME_FCWFC1, tag, owner, clock)
 	, device_vme_card_interface(mconfig, *this)
+        , m_maincpu (*this, WD1015_TAG)
 	, m_fdc(*this, "fdc")
         , m_fdd0(*this, "fdc:0")
 	, m_fdd1(*this, "fdc:1")
 	, m_fdd2(*this, "fdc:2")
 	, m_fdd3(*this, "fdc:3")
-        //,m_maincpu (*this, WD1015_TAG)
 {
 	LOG("%s\n", FUNCNAME);
-}
-
-vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)	: vme_fcwfc1_card_device(mconfig, VME_FCWFC1, tag, owner, clock)
-{
-	LOG("%s %s\n", tag, FUNCNAME);
 }
 
 /* Start it up */
