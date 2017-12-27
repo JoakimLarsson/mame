@@ -185,9 +185,12 @@ public:
 		AMOD_STANDARD_SUPERVIS_BLK  = 0x3F
 	};
 	void install_device(vme_amod_t amod, offs_t start, offs_t end, read8_delegate rhandler, write8_delegate whandler, uint32_t mask);
-	//  void install_device(vme_amod_t amod, offs_t start, offs_t end, read8_delegate rhandler, write8_delegate whandler);
 	void install_device(vme_amod_t amod, offs_t start, offs_t end, read16_delegate rhandler, write16_delegate whandler, uint32_t mask);
 	void install_device(vme_amod_t amod, offs_t start, offs_t end, read32_delegate rhandler, write32_delegate whandler, uint32_t mask);
+	template<typename T> void install_device(vme_amod_t amod, offs_t addrstart, offs_t addrend, T &device, void (T::*map)(class address_map &map), int bits)
+	{
+		m_prgspace->install_device(addrstart, addrend, device, map, bits, 0xffffffffffffffffU >> (64 - m_prgwidth));
+	}
 
 protected:
 	vme_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);

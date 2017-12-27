@@ -111,19 +111,24 @@
  ****************************************************************************/
 
 #include "emu.h"
-#include "cpu/mcs48/mcs48.h"
-#include "machine/wd11c00_17.h"
+//#include "cpu/mcs48/mcs48.h"
+//#include "machine/wd11c00_17.h"
 #include "vme_fcwfc.h"
+#include "imagedev/flopdrv.h"
+#include "machine/wd_fdc.h"
+#include "formats/imd_dsk.h"
 
 //#define LOG_GENERAL (1U <<  0)
 #define LOG_SETUP   (1U <<  1)
+#define LOG_READ    (1U <<  2)
 
-//#define VERBOSE (LOG_GENERAL | LOG_SETUP )
-//#define LOG_OUTPUT_FUNC printf
+#define VERBOSE (LOG_GENERAL | LOG_SETUP )
+#define LOG_OUTPUT_FUNC printf
 
 #include "logmacro.h"
 
 #define LOGSETUP(...) LOGMASKED(LOG_SETUP, __VA_ARGS__)
+#define LOGR(...)     LOGMASKED(LOG_READ, __VA_ARGS__)
 
 #ifdef _MSC_VER
 #define FUNCNAME __func__
@@ -131,9 +136,9 @@
 #define FUNCNAME __PRETTY_FUNCTION__
 #endif
 
-#define TODO "Driver for WD1015, WD2927, WD1014 and WD1010 needed\n"
+#define TODO "Driver for WD1015, WD1014 and WD1010 needed\n"
 #define WD1015_TAG      "j36"
-#define HLE 0
+#define WD2797_TAG	"fdc"
 
 //**************************************************************************
 //	GLOBAL VARIABLES
@@ -146,6 +151,8 @@ DEFINE_DEVICE_TYPE(VME_FCWFC1, vme_fcwfc1_card_device, "fcwfc1", "Force Computer
 //-------------------------------------------------
 
 DEVICE_ADDRESS_MAP_START( map, 8, vme_fcwfc1_card_device )
+	AM_RANGE(0x0000, 0x000f) AM_READWRITE(dpram_r, dpram_w)
+#if 0
 #if HLE
 	AM_RANGE(0x00, 0x00) AM_WRITE(complete_irq_vector_w)
 	AM_RANGE(0x01, 0x01) AM_READ(data_r) AM_WRITE(data_w)
@@ -159,7 +166,6 @@ DEVICE_ADDRESS_MAP_START( map, 8, vme_fcwfc1_card_device )
 	AM_RANGE(0x0f, 0x0f) AM_READ(status_r) AM_WRITE(command_w)
 #else
 	AM_RANGE(0x0000, 0x000f) AM_READWRITE(dpram_r, dpram_w)
-#if 0
 	/* All these lines are ripped from wdxt_gen.cpp so need to be adjusted before being enabled in LLE */
 	AM_RANGE(0x00, 0xff) AM_DEVREADWRITE(WD11C00_17_TAG, wd11c00_17_device, read, write)
 	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_READ(wd1015_t0_r)
@@ -182,10 +188,11 @@ SLOT_INTERFACE_END
  * Machine configuration
  */
 MACHINE_CONFIG_MEMBER (vme_fcwfc1_card_device::device_add_mconfig)
-#if HLE
-#else
+	MCFG_WD2797_ADD(WD2797_TAG, XTAL_1MHz) // Fake value, unknown crystal
 	MCFG_FLOPPY_DRIVE_ADD("fdc:0", fcwfc1_floppies, "525sd", vme_fcwfc1_card_device::fcwfc1_floppy_formats)
 	MCFG_FLOPPY_DRIVE_ADD("fdc:1", fcwfc1_floppies, "525sd", vme_fcwfc1_card_device::fcwfc1_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:2", fcwfc1_floppies, "525sd", vme_fcwfc1_card_device::fcwfc1_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:3", fcwfc1_floppies, "525sd", vme_fcwfc1_card_device::fcwfc1_floppy_formats)
 #if 0
 	MCFG_CPU_ADD(WD1015_TAG, I8049, 5000000)
 	MCFG_CPU_PROGRAM_MAP(wd1015_mem)
@@ -196,7 +203,6 @@ MACHINE_CONFIG_MEMBER (vme_fcwfc1_card_device::device_add_mconfig)
 	MCFG_MCS48_PORT_P2_IN_CB(READ8(wdxt_gen_device, wd1015_p2_r))
 	MCFG_MCS48_PORT_P2_OUT_CB(WRITE8(wdxt_gen_device, wd1015_p2_w))
 #endif
-#endif
 MACHINE_CONFIG_END
 
 //-------------------------------------------------
@@ -204,21 +210,13 @@ MACHINE_CONFIG_END
 //  machine configurations
 //-------------------------------------------------
 
-#if 0
-machine_config_constructor vme_fcwfc1_card_device::device_mconfig_additions() const
-{
-	LOG("%s %s\n", tag(), FUNCNAME);
-	return MACHINE_CONFIG_NAME( fcwfc1 );
-}
-#endif
-
 /* ROM definitions 
  * ROM has the following copyright string: 
  *  #Copyright (C) 1983 Western Digital Corporation  Written by Chandru Sippy & Michael Friese
  */
 ROM_START (fcwfc1)
-	ROM_REGION( 0x800, WD1015_TAG, 0 )
-	ROM_LOAD( "WD1015-10.BIN", 0x000, 0x800, CRC(85dfe326) SHA1(f54803da3668193a3470ee0e24e3ea47ae605ec3) )
+//	ROM_REGION( 0x800, WD1015_TAG, 0 )
+//	ROM_LOAD( "WD1015-10.BIN", 0x000, 0x800, CRC(85dfe326) SHA1(f54803da3668193a3470ee0e24e3ea47ae605ec3) )
 ROM_END
 
 //**************************************************************************
@@ -226,14 +224,18 @@ ROM_END
 //**************************************************************************
 vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock) :
 	device_t(mconfig, type, tag, owner, clock)
-	,device_vme_card_interface(mconfig, *this)
-	,m_maincpu (*this, WD1015_TAG)
+	, device_vme_card_interface(mconfig, *this)
+	, m_fdc(*this, "fdc")
+        , m_fdd0(*this, "fdc:0")
+	, m_fdd1(*this, "fdc:1")
+	, m_fdd2(*this, "fdc:2")
+	, m_fdd3(*this, "fdc:3")
+        //,m_maincpu (*this, WD1015_TAG)
 {
 	LOG("%s\n", FUNCNAME);
 }
 
-vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: vme_fcwfc1_card_device(mconfig, VME_FCWFC1, tag, owner, clock)
+vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)	: vme_fcwfc1_card_device(mconfig, VME_FCWFC1, tag, owner, clock)
 {
 	LOG("%s %s\n", tag, FUNCNAME);
 }
@@ -246,14 +248,8 @@ void vme_fcwfc1_card_device::device_start()
 
 	uint32_t base = 0xFCB01000; // Miniforce default base + offset 0-f TODO: Make configurable
 
-#if HLE
-	m_vme->install_device(vme_device::A24_SC, base      , base + 0x0f, // Dual ported RAM A24:D8
-						  read8_delegate(FUNC(vme_fcwfc1_card_device::not_implemented_r), this),
-						  write8_delegate(FUNC(vme_fcwfc1_card_device::not_implemented_w), this), 0xffffffff);
-#else
 	// Dual ported RAM A24:D8
-	m_vme->install_device(vme_device::A24_SC, base, base + 0x0f, &vme_fcwfc1_card_device::map, 8, 0xffffffff);
-#endif
+	m_vme->install_device(vme_device::A24_SC, base, base + 0x0f, *this, &vme_fcwfc1_card_device::map, 8);
 }
 
 void vme_fcwfc1_card_device::device_reset()

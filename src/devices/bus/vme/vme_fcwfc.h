@@ -1,5 +1,6 @@
 // license:BSD-3-Clause
 // copyright-holders:Joakim Larsson Edstrom
+
 #ifndef VME_FCWFC1_H
 #define VME_FCWFC1_H
 #pragma once
@@ -16,6 +17,7 @@ class vme_fcwfc1_card_device :
 {
 public:
 	vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+
 protected:
 	vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
@@ -61,7 +63,7 @@ protected:
 	optional_device<floppy_connector> m_fdd3;
 
 private:
-	required_device<cpu_device> m_maincpu;
+	//required_device<cpu_device> m_maincpu;
 	DECLARE_FLOPPY_FORMATS( fcwfc1_floppy_formats );
 };
 
