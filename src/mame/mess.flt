@@ -182,6 +182,7 @@ dsb46.cpp
 dual68.cpp
 dvk_kcgd.cpp
 dvk_ksm.cpp
+dynabyte.cpp
 e100.cpp
 eacc.cpp
 ec184x.cpp

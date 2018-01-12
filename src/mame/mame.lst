@@ -11608,6 +11608,9 @@ quarterh                        // (c) 1983 Electro-Sports
 quarterha                       // (c) 1983 Electro-Sports
 quarterhb                       // (c) 1983 Electro-Sports
 
+@source:dynabyte.cpp
+dynabc                        	//
+
 @source:dynadice.cpp
 dynadice                        // ?
 
