@@ -29776,6 +29776,7 @@ gprnrs1
 gprnrs16
 vgpocket
 vgpmini
+sy889
 
 @source:newbrain.cpp
 newbrain                        //
@@ -39239,4 +39240,3 @@ vgmplay
 @source:ldplayer.cpp
 simldv1000                      // Pioneer LD-V1000
 simpr8210                       // Pioneer PR-8210
-
