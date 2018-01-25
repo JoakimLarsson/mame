@@ -134,84 +134,43 @@ The serial interface card is z80 based and marked DIABLO-1300-V24
 */
 
 #include "emu.h"
+#include "cpu/diablo/diablo1300.h"
 
-#if 0
-#include "cpu/z80/z80.h"
-#include "machine/z80pio.h"
-#include "machine/i8251.h"
-
-class diablo_state : public driver_device
+class diablo1300_state : public driver_device
 {
 public:
-	diablo_state(const machine_config &mconfig, device_type type, const char *tag)
+	diablo1300_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag)
 		, m_maincpu(*this, "maincpu")
-		, m_pio1(*this, "pio1")
-		, m_pio2(*this, "pio2")
-		, m_usart(*this, "usart")
   { }
   
 private:
 	virtual void machine_start() override;
 	virtual void machine_reset() override;
 	required_device<cpu_device> m_maincpu;
-	required_device<z80pio_device> m_pio1;
-	required_device<z80pio_device> m_pio2;
-	required_device<i8251_device> m_usart;
 public:
-	void diablo(machine_config &config);
+	void diablo1300(machine_config &config);
 };
 
-static ADDRESS_MAP_START( diablo_map, AS_PROGRAM, 8, diablo_state )
-	AM_RANGE(0x0000, 0x07ff) AM_ROM
-	AM_RANGE(0x0800, 0x0bff) AM_RAM
+static ADDRESS_MAP_START( diablo1300_map, AS_PROGRAM, 16, diablo1300_state )
+	AM_RANGE(0x0000, 0x07ff) AM_RAM
 ADDRESS_MAP_END
-
-// Also reading from io 74 and b4, probably latches or similar
-static ADDRESS_MAP_START( diablo_io_map, AS_IO, 8, diablo_state )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xd4, 0xd7) AM_DEVREADWRITE("pio1", z80pio_device, read, write)
-	AM_RANGE(0xe4, 0xe7) AM_DEVREADWRITE("pio2", z80pio_device, read, write)
-	AM_RANGE(0xf0, 0xf0) AM_DEVREADWRITE("usart", i8251_device, data_r, data_w)
-	AM_RANGE(0xf1, 0xf1) AM_DEVREADWRITE("usart", i8251_device, status_r, control_w)
-ADDRESS_MAP_END
-
 
 static INPUT_PORTS_START( diablo )
 INPUT_PORTS_END
 
-void diablo_state::machine_start()
+void diablo1300_state::machine_start()
 {
 }
 
-void diablo_state::machine_reset()
+void diablo1300_state::machine_reset()
 {
 }
 
-MACHINE_CONFIG_START( diablo_state::diablo )
+MACHINE_CONFIG_START( diablo1300_state::diablo1300 )
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", Z80, XTAL_1_6896MHz)
-	MCFG_CPU_PROGRAM_MAP(diablo_map)
-	MCFG_CPU_IO_MAP(diablo_io_map)
-
-        MCFG_DEVICE_ADD("pio1", Z80PIO, XTAL_1_6896MHz)
-//MCFG_Z80PIO_IN_PB_CB(READ8(z1013_state, port_b_r))
-//MCFG_Z80PIO_OUT_PB_CB(WRITE8(z1013_state, port_b_w))
-        MCFG_DEVICE_ADD("pio2", Z80PIO, XTAL_1_6896MHz)
-//MCFG_Z80PIO_IN_PB_CB(READ8(z1013_state, port_b_r))
-//MCFG_Z80PIO_OUT_PB_CB(WRITE8(z1013_state, port_b_w))
-
-        MCFG_DEVICE_ADD("usart", I8251, XTAL_1_6896MHz)
-#if 0
-        MCFG_I8251_TXD_HANDLER(DEVWRITELINE(RS232_B_TAG, rs232_port_device, write_txd))
-        MCFG_I8251_DTR_HANDLER(DEVWRITELINE(RS232_B_TAG, rs232_port_device, write_dtr))
-        MCFG_I8251_RTS_HANDLER(DEVWRITELINE(RS232_B_TAG, rs232_port_device, write_rts))
-
-        MCFG_RS232_PORT_ADD(RS232_B_TAG, default_rs232_devices, "terminal")
-        MCFG_RS232_RXD_HANDLER(DEVWRITELINE(I8251_B_TAG, i8251_device, write_rxd))
-        MCFG_RS232_DSR_HANDLER(DEVWRITELINE(I8251_B_TAG, i8251_device, write_dsr))
-        MCFG_RS232_CTS_HANDLER(DEVWRITELINE(I8251_B_TAG, i8251_device, write_cts))
-#endif
+	MCFG_CPU_ADD("maincpu", DIABLO1300, XTAL_1_6896MHz)
+	MCFG_CPU_PROGRAM_MAP(diablo1300_map)
 MACHINE_CONFIG_END
 
 
@@ -219,6 +178,6 @@ ROM_START( diablo )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ok1.bin", 0x0000, 0x800, CRC(59236340) SHA1(7548ad0ad32cedad856a158228d3e24c5ebf542d) )
 ROM_END
-#endif
 
-GAME( 1979, diablo,  0, diablo, diablo, diablo_state,  0, 0, "Diablo", "Diablo 1355WP", MACHINE_IS_SKELETON )
+//   YEAR  NAME     PARENT    COMPAT   MACHINE      INPUT   STATE              INIT  COMPANY               FULLNAME
+COMP(1976, diablo,  0,        0,       diablo1300,  diablo, diablo1300_state,  0,    "Diablo Systems Inc", "Diablo HyType II Series 1300 CPU", MACHINE_IS_SKELETON)

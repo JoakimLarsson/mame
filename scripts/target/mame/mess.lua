@@ -100,6 +100,7 @@ CPUS["TMS7000"] = true
 CPUS["SM8500"] = true
 CPUS["MINX"] = true
 CPUS["SSEM"] = true
+CPUS["DIABLO"] = true
 CPUS["AVR8"] = true
 CPUS["TMS1000"] = true
 CPUS["MCS40"] = true
