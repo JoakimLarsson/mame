@@ -153,7 +153,7 @@ public:
 };
 
 static ADDRESS_MAP_START( diablo1300_map, AS_PROGRAM, 16, diablo1300_state )
-	AM_RANGE(0x0000, 0x07ff) AM_RAM
+	AM_RANGE(0x0000, 0x03ff) AM_ROM
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( diablo )
@@ -173,10 +173,13 @@ MACHINE_CONFIG_START( diablo1300_state::diablo1300 )
 	MCFG_CPU_PROGRAM_MAP(diablo1300_map)
 MACHINE_CONFIG_END
 
-
 ROM_START( diablo )
 	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "ok1.bin", 0x0000, 0x800, CRC(59236340) SHA1(7548ad0ad32cedad856a158228d3e24c5ebf542d) )
+	ROM_DEFAULT_BIOS("diablo1300")
+
+	ROM_SYSTEM_BIOS(0, "diablo1300", "Diablo Printer Series 1300 14510-xx CPU microcode")
+	ROMX_LOAD ("diablo1300.odd",  0x0001, 0x200, CRC (5e295350) SHA1 (6ea9a22b23b8bab93ae57671541d65dba698c722), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD ("diablo1300.even", 0x0000, 0x200, CRC (85562eb1) SHA1 (9335eeeabdd37255d6ffee153a027944a4519126), ROM_SKIP(1) | ROM_BIOS(1))
 ROM_END
 
 //   YEAR  NAME     PARENT    COMPAT   MACHINE      INPUT   STATE              INIT  COMPANY               FULLNAME
