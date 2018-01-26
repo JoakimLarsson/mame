@@ -45,30 +45,36 @@ protected:
 
 	// address spaces
 	const address_space_config m_program_config;
+	const address_space_config m_data_config;
 
 	// memory access
+	inline uint16_t opcode_read(uint16_t addr);
 	inline uint16_t program_read16(uint16_t addr);
 	inline void program_write16(uint16_t addr, uint16_t data);
+	inline uint8_t data_read8(uint16_t addr);
+	inline void data_write8(uint16_t addr, uint8_t data);
 
-	inline uint16_t read_reg(uint16_t reg){ return 0;}
+	inline uint8_t read_reg(uint16_t reg);
 	inline uint16_t read_port(uint16_t port){ return 0;}
 	inline uint16_t read_table(uint16_t offset){ return 0;}
-	inline void write_reg(uint16_t reg, uint16_t data){}
+	inline void write_reg(uint16_t reg, uint8_t data);
 	inline void write_port(uint16_t port, uint16_t data){}
 	inline uint16_t read_ibus(){ return 0; }
 
 	// CPU registers
 	uint16_t m_pc;
-	uint16_t m_a;
-	uint16_t m_b;
-	uint16_t m_carry;
-	uint16_t m_power_on;
+	uint8_t m_a;
+	uint8_t m_b;
+	uint8_t m_carry;
+	uint8_t m_power_on;
 
 	// other internal states
 	int m_icount;
 
 	// address spaces
 	address_space *m_program;
+	address_space *m_data;
+	direct_read_data<-1> *m_direct;
 };
 
 // device type definition

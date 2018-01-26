@@ -153,7 +153,11 @@ public:
 };
 
 static ADDRESS_MAP_START( diablo1300_map, AS_PROGRAM, 16, diablo1300_state )
-	AM_RANGE(0x0000, 0x03ff) AM_ROM
+	AM_RANGE(0x0000, 0x01ff) AM_ROM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( diablo1300_data_map, AS_DATA, 8, diablo1300_state )
+	AM_RANGE(0x00, 0x1f) AM_RAM
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( diablo )
@@ -171,10 +175,11 @@ MACHINE_CONFIG_START( diablo1300_state::diablo1300 )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", DIABLO1300, XTAL_1_6896MHz)
 	MCFG_CPU_PROGRAM_MAP(diablo1300_map)
+	MCFG_CPU_DATA_MAP(diablo1300_data_map)
 MACHINE_CONFIG_END
 
 ROM_START( diablo )
-	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_16BIT )
 	ROM_DEFAULT_BIOS("diablo1300")
 
 	ROM_SYSTEM_BIOS(0, "diablo1300", "Diablo Printer Series 1300 14510-xx CPU microcode")

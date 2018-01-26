@@ -9,7 +9,7 @@
 
 u32 diablo1300_disassembler::opcode_alignment() const
 {
-	return 2;
+	return 1;
 }
 
 offs_t diablo1300_disassembler::disassemble(std::ostream &stream, offs_t pc, const data_buffer &opcodes, const data_buffer &params)
@@ -76,5 +76,5 @@ offs_t diablo1300_disassembler::disassemble(std::ostream &stream, offs_t pc, con
 		break;
 	}
 
-	return 2 | SUPPORTED;
+	return 1 | SUPPORTED;
 }

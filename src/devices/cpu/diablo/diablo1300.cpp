@@ -9,7 +9,24 @@
 #include "diablo1300.h"
 #include "diablo1300dasm.h"
 
+//**************************************************************************
+//  CONFIGURABLE LOGGING
+//**************************************************************************
+#define LOG_OP   (1U <<  1)
+
+#define VERBOSE (LOG_GENERAL | LOG_OP)
+//#define LOG_OUTPUT_FUNC printf
+
+#include "logmacro.h"
+
+#define LOGOP(...) LOGMASKED(LOG_OP,   __VA_ARGS__)
+
 /*****************************************************************************/
+
+inline uint16_t diablo1300_cpu_device::opcode_read(uint16_t address)
+{
+	return m_direct->read_word(address);
+}
 
 inline uint16_t diablo1300_cpu_device::program_read16(uint16_t address)
 {
@@ -22,18 +39,27 @@ inline void diablo1300_cpu_device::program_write16(uint16_t address, uint16_t da
 	return;
 }
 
-#if 0
-inline uint16_t diablo1300_cpu_device::data_read16(uint16_t address)
+inline uint8_t diablo1300_cpu_device::data_read8(uint16_t address)
 {
-	return m_program->read_word(address);
+	return m_data->read_byte(address);
 }
 
-inline void diablo1300_cpu_device::program_write16(uint16_t address, uint16_t data)
+inline void diablo1300_cpu_device::data_write8(uint16_t address, uint8_t data)
 {
-	m_program->write_word(address, data);
+	m_data->write_byte(address, data);
 	return;
 }
-#endif
+
+inline uint8_t diablo1300_cpu_device::read_reg(uint16_t reg)
+{
+	return data_read8(reg);
+}
+
+inline void diablo1300_cpu_device::write_reg(uint16_t reg, uint8_t data)
+{
+	data_write8(reg, data);
+}
+
 /*****************************************************************************/
 
 DEFINE_DEVICE_TYPE(DIABLO1300, diablo1300_cpu_device, "diablo1300_cpu", "DIABLO 1300 CPU")
@@ -44,12 +70,17 @@ DEFINE_DEVICE_TYPE(DIABLO1300, diablo1300_cpu_device, "diablo1300_cpu", "DIABLO 
 
 diablo1300_cpu_device::diablo1300_cpu_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: cpu_device(mconfig, DIABLO1300, tag, owner, clock)
-	, m_program_config("program", ENDIANNESS_LITTLE, 16, 16)
-	, m_pc(1)
+	, m_program_config("program", ENDIANNESS_LITTLE, 16, 9, -1)
+	, m_data_config("data", ENDIANNESS_LITTLE, 8, 5)
+	, m_pc(0)
 	, m_a(0)
 	, m_b(0)
 	, m_carry(0)
-	, m_power_on(CLEAR_LINE)
+	, m_power_on(ASSERT_LINE)
+	, m_program(nullptr)
+	, m_data(nullptr)
+	, m_direct(nullptr)
+
 {
 	// Allocate & setup
 }
@@ -58,15 +89,16 @@ diablo1300_cpu_device::diablo1300_cpu_device(const machine_config &mconfig, cons
 void diablo1300_cpu_device::device_start()
 {
 	m_program = &space(AS_PROGRAM);
-	//m_data    = &space(AS_DATA);
+	m_data    = &space(AS_DATA);
+	m_direct  = m_program->direct<-1>();
 
 	// register our state for the debugger
 	state_add(STATE_GENPC,     "GENPC",     m_pc).noshow();
 	state_add(STATE_GENPCBASE, "CURPC",     m_pc).noshow();
-	//state_add(STATE_GENFLAGS,  "GENFLAGS",  m_halt).callimport().callexport().formatstr("%1s").noshow();
-	state_add(DIABLO_PC,         "PC",        m_pc).mask(0xffff);
-	state_add(DIABLO_A,          "A",         m_a).mask(0xffff);
-	state_add(DIABLO_B,          "B",         m_a).mask(0xffff);
+
+	state_add(DIABLO_PC,         "PC",        m_pc).mask(0x1ff);
+	state_add(DIABLO_A,          "A",         m_a).mask(0xff);
+	state_add(DIABLO_B,          "B",         m_a).mask(0xff);
 
 	/* setup regtable */
 	save_item(NAME(m_pc));
@@ -89,7 +121,7 @@ void diablo1300_cpu_device::device_reset()
 	m_b     = 0;
 	m_carry = 0;
 
-	m_power_on = CLEAR_LINE;
+	m_power_on = ASSERT_LINE;  // should be CLEAR_LINE when card can detect power up
 }
 
 
@@ -102,7 +134,8 @@ void diablo1300_cpu_device::device_reset()
 device_memory_interface::space_config_vector diablo1300_cpu_device::memory_space_config() const
 {
 	return space_config_vector {
-		std::make_pair(AS_PROGRAM, &m_program_config)
+		std::make_pair(AS_PROGRAM, &m_program_config),
+		std::make_pair(AS_DATA, &m_data_config)
 	};
 }
 
@@ -197,7 +230,7 @@ void diablo1300_cpu_device::execute_run()
 
 		if( m_power_on == ASSERT_LINE )
 		{
-			op = program_read16(m_pc);
+			op = opcode_read(m_pc);
 			m_pc++;
 			switch (op & 0x0007)
 			{
@@ -210,6 +243,9 @@ void diablo1300_cpu_device::execute_run()
 				                  R    = RAM bank select
 				                   III = 000 (opcode)
 				*/
+				LOGOP("OUTPUT dv%d, r%02X\n",
+				    (op & 0x0070) >> 4,
+				    ((op & 0x0f00) >> 8) + ((op & 0x0008) ? 0x10 : 0));
 				m_a = read_reg(((op & 0x0f00) >> 8) + ((op & 0x0008) ? 0x10 : 0));
 				m_b = 0;
 				m_carry = 0;
@@ -222,10 +258,11 @@ void diablo1300_cpu_device::execute_run()
 				                  H    = The 9th hi address bit
 				                   III = 001 (opcode)
 				*/
+				LOGOP("JNC    %03X\n", ((op & 0xff00) >> 8) + ((op & 0x0008) ? 0x100 : 0));
 				m_a = (op & 0xff00) >> 8;
 				m_b = 0;
 				m_carry = 0;
-				m_pc = (op & 0x0008) + m_a;
+				m_pc = ((op & 0x0008) + m_a);
 				break;
 			case 2:
 				/* RST Dport : Reset Port
@@ -235,6 +272,7 @@ void diablo1300_cpu_device::execute_run()
 				                  R    = RAM bank select
 				                   III = 010 (opcode)
 				*/
+				LOGOP("RST    dv%d\n", (op & 0x0700) >> 8);
 				m_b = read_ibus();
 				m_a = read_port((op & 0x0700) >> 8);
 				m_carry = (m_carry + m_a + m_b) > 0xff ? 1 : 0;
@@ -247,6 +285,9 @@ void diablo1300_cpu_device::execute_run()
 				                  R    = RAM bank select
 				                   III = 011 (opcode)
 				*/
+				LOGOP("LDBBIT r%02X, %02X\n",
+				    ((op & 0x00f0) >> 4) + ((op & 0x0008) ? 0x10 : 0),
+				    (op & 0xff00) >> 8);
 				m_a = (op & 0xff00) >> 8;
 				m_b = read_reg(((op & 0x00f0) >> 4));
 				m_carry = (m_a & m_b) != 0 ? 1 : 0;
@@ -259,7 +300,10 @@ void diablo1300_cpu_device::execute_run()
 					   II10 0000 AAAA RIII
 					             AAAA      = Register 
 						          R    = RAM bank select
-					   II              III = 01xx xxxx xxxx x100 (opcode) */
+					   II              III = 01xx xxxx xxxx x100 (opcode) 
+					*/
+					LOGOP("XLAT   r%02X\n",
+					    ((op & 0x00f0) >> 4) + ((op & 0x0008) ? 0x10 : 0));
 					m_a = read_table(m_b + m_carry);
 					m_b = 0;
 					m_carry = 0;
@@ -274,6 +318,9 @@ void diablo1300_cpu_device::execute_run()
 				                          R    = RAM bank select
 				           II              III = 11xx xxxx xxxx x100 (opcode)
 					*/
+					LOGOP("MOVCPL r%02X, r%02X\n",
+					    ((op & 0x00f0) >> 4) + ((op & 0x0008) ? 0x10 : 0),
+					    ((op & 0x0f00) >> 8) + ((op & 0x0008) ? 0x10 : 0));
 				  	m_a = read_reg(((op & 0x0008) != 0 ? 0x10 : 0) + ((op & 0x0f00) >> 8));
 					m_b = 0;
 					m_carry = 0;
@@ -288,6 +335,9 @@ void diablo1300_cpu_device::execute_run()
 						          R    = RAM bank select
 					   II              III = 01xx xxxx xxxx x100 (opcode)
 					*/
+					LOGOP("INPUT  r%02X, dv%X\n",
+					    ((op & 0x00f0) >> 4) + ((op & 0x0008) ? 0x10 : 0),
+					    ((op & 0x0f00) >> 8));
 				  	m_a = read_port((op & 0x0f00) >> 8);
 					m_b = 0;
 					m_carry = 0;
@@ -305,6 +355,9 @@ void diablo1300_cpu_device::execute_run()
 				                  R    = RAM bank select
 				                   III = 101 (opcode)
 				*/
+				LOGOP("LOAD#  r%02X, %02X\n",
+				    ((op & 0x00f0) >> 4) + ((op & 0x0008) ? 0x10 : 0),
+				    (op & 0xff00) >> 8);
 				m_a = (op & 0xff00) >> 8;
 				m_b = 0;
 				m_carry = 0;
@@ -318,6 +371,9 @@ void diablo1300_cpu_device::execute_run()
 				                  R    = RAM bank select
 				                   III = 110 (opcode)
 				*/
+				LOGOP("ADCCPL r%02X, r%02X\n",
+				    ((op & 0x00f0) >> 4) + ((op & 0x0008) ? 0x10 : 0),
+				    ((op & 0x0f00) >> 8) + ((op & 0x0008) ? 0x10 : 0));
 				m_a = read_reg(((op & 0x0008) != 0 ? 0x10 : 0) + ((op & 0x0f00) >> 8));
 				m_b = read_reg(((op & 0x0008) != 0 ? 0x10 : 0) + ((op & 0x00f0) >> 4));
 				m_carry = (m_a + m_b + m_carry) > 255 ? 1 : 0;
@@ -331,6 +387,9 @@ void diablo1300_cpu_device::execute_run()
 				                     R = RAM bank select
 				                   III = 100 (opcode)
 				*/
+				LOGOP("ADC#   r%02X, %02X\n",
+				    ((op & 0x00f0) >> 4) + ((op & 0x0008) ? 0x10 : 0),
+				    (op & 0xff00) >> 8);
 				m_a = (op & 0xff00) >> 8;
 				m_b = read_reg(((op & 0x0008) != 0 ? 0x10 : 0) + ((op & 0x00f0) >> 4));
 				m_carry = (m_a + m_b + m_carry) > 255 ? 1 : 0;
