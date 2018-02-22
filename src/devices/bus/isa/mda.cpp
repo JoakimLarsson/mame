@@ -23,19 +23,26 @@
 #define HERCULES_SCREEN_NAME "hercules_screen"
 #define HERCULES_MC6845_NAME "mc6845_hercules"
 
-#define VERBOSE_MDA 0       /* MDA (Monochrome Display Adapter) */
+#define LOG_READ    (1U << 1)
+#define LOG_SETUP   (1U << 2)
+#define LOG_ROW     (1U << 3)
+
+#define VERBOSE (LOG_GENERAL | LOG_SETUP)
+#define LOG_OUTPUT_STREAM std::cout
+
+#include "logmacro.h"
+
+#define LOGR(...)     LOGMASKED(LOG_READ,  __VA_ARGS__)
+#define LOGSETUP(...) LOGMASKED(LOG_SETUP, __VA_ARGS__)
+#define LOGROW(...)   LOGMASKED(LOG_ROW,   __VA_ARGS__)
+
+#ifdef _MSC_VER
+#define FUNCNAME __func__
+#else
+#define FUNCNAME __PRETTY_FUNCTION__
+#endif
 
 #define MDA_CLOCK   16257000
-
-#define MDA_LOG(N,M,A) \
-	do { \
-		if(VERBOSE_MDA>=N) \
-		{ \
-			if( M ) \
-				logerror("%11.6f: %-24s",machine().time().as_double(),(char*)M ); \
-			logerror A; \
-		} \
-	} while (0)
 
 static const unsigned char mda_palette[4][3] =
 {
@@ -220,7 +227,7 @@ MC6845_UPDATE_ROW( isa8_mda_device::mda_text_inten_update_row )
 	uint16_t  chr_base = ( ra & 0x08 ) ? 0x800 | ( ra & 0x07 ) : ra;
 	int i;
 
-	if ( y == 0 ) MDA_LOG(1,"mda_text_inten_update_row",("\n"));
+	if ( y == 0 ) LOGROW("%11.6f: %-24s\n", machine().time().as_double(), FUNCNAME);
 	for ( i = 0; i < x_count; i++ )
 	{
 		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
@@ -293,7 +300,7 @@ MC6845_UPDATE_ROW( isa8_mda_device::mda_text_blink_update_row )
 	uint16_t  chr_base = ( ra & 0x08 ) ? 0x800 | ( ra & 0x07 ) : ra;
 	int i;
 
-	if ( y == 0 ) MDA_LOG(1,"mda_text_blink_update_row",("\n"));
+	if ( y == 0 ) LOGROW("%11.6f: %-24s\n", machine().time().as_double(), FUNCNAME);
 	for ( i = 0; i < x_count; i++ )
 	{
 		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
@@ -624,7 +631,7 @@ MC6845_UPDATE_ROW( isa8_hercules_device::hercules_gfx_update_row )
 	uint32_t  *p = &bitmap.pix32(y);
 	uint16_t  gfx_base = ( ( m_mode_control & 0x80 ) ? 0x8000 : 0x0000 ) | ( ( ra & 0x03 ) << 13 );
 	int i;
-	if ( y == 0 ) MDA_LOG(1,"hercules_gfx_update_row",("\n"));
+	if ( y == 0 ) LOGROW("%11.6f: %-24s\n", machine().time().as_double(), FUNCNAME);
 	for ( i = 0; i < x_count; i++ )
 	{
 		uint8_t   data = m_videoram[ gfx_base + ( ( ma + i ) << 1 ) ];
@@ -813,7 +820,7 @@ MC6845_UPDATE_ROW( isa8_ec1840_0002_device::mda_lowres_text_inten_update_row )
 	uint16_t  chr_base = ra;
 	int i;
 
-	if ( y == 0 ) MDA_LOG(1,"mda_lowres_text_inten_update_row",("\n"));
+	if ( y == 0 ) LOGROW("%11.6f: %-24s\n", machine().time().as_double(), FUNCNAME);
 	for ( i = 0; i < x_count; i++ )
 	{
 		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
@@ -877,7 +884,7 @@ MC6845_UPDATE_ROW( isa8_ec1840_0002_device::mda_lowres_text_blink_update_row )
 	uint16_t  chr_base = ra;
 	int i;
 
-	if ( y == 0 ) MDA_LOG(1,"mda_lowres_text_blink_update_row",("\n"));
+	if ( y == 0 ) LOGROW("%11.6f: %-24s\n", machine().time().as_double(), FUNCNAME);
 	for ( i = 0; i < x_count; i++ )
 	{
 		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
@@ -955,6 +962,268 @@ WRITE8_MEMBER( isa8_ec1840_0002_device::mode_control_w )
 }
 
 MC6845_UPDATE_ROW( isa8_ec1840_0002_device::crtc_update_row )
+{
+	if (m_update_row_type == -1)
+		return;
+
+	switch (m_update_row_type)
+	{
+		case MDA_LOWRES_TEXT_INTEN:
+			mda_lowres_text_inten_update_row(bitmap, cliprect, ma, ra, y, x_count, cursor_x, de, hbp, vbp);
+			break;
+		case MDA_LOWRES_TEXT_BLINK:
+			mda_lowres_text_blink_update_row(bitmap, cliprect, ma, ra, y, x_count, cursor_x, de, hbp, vbp);
+			break;
+	}
+}
+
+/*****************************************************************************
+
+  Ericsson PC MDA
+
+******************************************************************************/
+/*
+When the Hercules changes to graphics mode, the number of pixels per access and
+clock divider should be changed. The correct mc6845 implementation does not
+allow this.
+
+The divder/pixels per 6845 clock is 9 for text mode and 16 for graphics mode.
+*/
+
+static GFXDECODE_START( pcepc )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, pc_16_charlayout, 1, 1 )
+GFXDECODE_END
+
+ROM_START( epc )
+	ROM_REGION(0x2000,"gfx1", 0)
+//ROM_LOAD("8363_65_14-80_CG_50821_A64.BIN",  0x00000, 0x2000, CRC(be709786) SHA1(38ab26224bbe66bbe2bb2ccac29b41cbf78bdbf8))
+	ROM_LOAD("10-40_VP_402_28_IC_24_A19.BIN",  0x00000, 0x2000, CRC(2aa53b92) SHA1(87051a037249eb631d7d2191bc0e925125c60f39))
+ROM_END
+
+//**************************************************************************
+//  GLOBAL VARIABLES
+//**************************************************************************
+DEFINE_DEVICE_TYPE(ISA8_EPC_MDA, isa8_epc_mda_device, "isa_epc_mda", "Ericsson PC Monochrome Display Adapter")
+
+
+//-------------------------------------------------
+//  device_add_mconfig - add device configuration
+//-------------------------------------------------
+
+MACHINE_CONFIG_START(isa8_epc_mda_device::device_add_mconfig)
+	MCFG_SCREEN_ADD( MDA_SCREEN_NAME, RASTER)
+	MCFG_SCREEN_RAW_PARAMS(MDA_CLOCK, 792, 0, 640, 370, 0, 350 )
+	MCFG_SCREEN_UPDATE_DEVICE( MDA_MC6845_NAME, mc6845_device, screen_update )
+
+	MCFG_PALETTE_ADD( "palette", 4 )
+
+	MCFG_MC6845_ADD( MDA_MC6845_NAME, MC6845, MDA_SCREEN_NAME, MDA_CLOCK/8)
+	MCFG_MC6845_SHOW_BORDER_AREA(false)
+	MCFG_MC6845_CHAR_WIDTH(8)
+	MCFG_MC6845_UPDATE_ROW_CB(isa8_mda_device, crtc_update_row)
+	MCFG_MC6845_OUT_HSYNC_CB(WRITELINE(isa8_mda_device, hsync_changed))
+	MCFG_MC6845_OUT_VSYNC_CB(WRITELINE(isa8_mda_device, vsync_changed))
+
+	MCFG_GFXDECODE_ADD("gfxdecode", "palette", pcepc)
+MACHINE_CONFIG_END
+
+//-------------------------------------------------
+//  rom_region - device-specific ROM region
+//-------------------------------------------------
+
+const tiny_rom_entry *isa8_epc_mda_device::device_rom_region() const
+{
+	return ROM_NAME( epc );
+}
+
+//**************************************************************************
+//  LIVE DEVICE
+//**************************************************************************
+
+//-------------------------------------------------
+//  isa8_epc_mda_device - constructor
+//-------------------------------------------------
+
+isa8_epc_mda_device::isa8_epc_mda_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
+	isa8_mda_device(mconfig, ISA8_EC1840_0002, tag, owner, clock), m_soft_chr_gen(nullptr)
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void isa8_epc_mda_device::device_start()
+{
+	isa8_mda_device::device_start();
+
+	m_soft_chr_gen = std::make_unique<uint8_t[]>(0x2000);
+	m_isa->install_bank(0xdc000, 0xddfff, "bank_chargen", m_soft_chr_gen.get());
+	m_isa->install_bank(0xde000, 0xdffff, "bank_chargen", m_soft_chr_gen.get());
+}
+
+void isa8_epc_mda_device::device_reset()
+{
+	isa8_mda_device::device_reset();
+
+	m_chr_gen = m_soft_chr_gen.get();
+}
+
+
+/***************************************************************************
+  Draw text mode with 80x25 characters (default) and intense background.
+  The character cell size is 8x14.
+***************************************************************************/
+
+MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_inten_update_row )
+{
+	const rgb_t *palette = m_palette->palette()->entry_list_raw();
+	uint32_t  *p = &bitmap.pix32(y);
+	uint16_t  chr_base = ra;
+	int i;
+
+	if ( y == 0 ) LOGROW("%11.6f: %-24s\n", machine().time().as_double(), FUNCNAME);
+	for ( i = 0; i < x_count; i++ )
+	{
+		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
+		uint8_t chr = m_videoram[ offset ];
+		uint8_t attr = m_videoram[ offset + 1 ];
+		uint8_t data = m_chr_gen[ (chr_base + chr * 16) << 1 ];
+		uint8_t fg = ( attr & 0x08 ) ? 3 : 2;
+		uint8_t bg = 0;
+
+		if ( ( attr & ~0x88 ) == 0 )
+		{
+			data = 0x00;
+		}
+
+		switch( attr )
+		{
+		case 0x70:
+			bg = 2;
+			fg = 0;
+			break;
+		case 0x78:
+			bg = 2;
+			fg = 1;
+			break;
+		case 0xF0:
+			bg = 3;
+			fg = 0;
+			break;
+		case 0xF8:
+			bg = 3;
+			fg = 1;
+			break;
+		}
+
+		if ( ( i == cursor_x && ( m_framecnt & 0x08 ) ) || ( attr & 0x07 ) == 0x01 )
+		{
+			data = 0xFF;
+		}
+
+		*p = palette[( data & 0x80 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x40 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x20 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x10 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x08 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x04 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x02 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x01 ) ? fg : bg]; p++;
+	}
+}
+
+
+/***************************************************************************
+  Draw text mode with 80x25 characters (default) and blinking characters.
+  The character cell size is 8x14.
+***************************************************************************/
+
+MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_blink_update_row )
+{
+	const rgb_t *palette = m_palette->palette()->entry_list_raw();
+	uint32_t  *p = &bitmap.pix32(y);
+	uint16_t  chr_base = ra;
+	int i;
+
+	if ( y == 0 ) LOGROW("%11.6f: %-24s\n", machine().time().as_double(), FUNCNAME);
+	for ( i = 0; i < x_count; i++ )
+	{
+		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
+		uint8_t chr = m_videoram[ offset ];
+		uint8_t attr = m_videoram[ offset + 1 ];
+		uint8_t data = m_chr_gen[ (chr_base + chr * 16) << 1 ];
+		uint8_t fg = ( attr & 0x08 ) ? 3 : 2;
+		uint8_t bg = 0;
+
+		if ( ( attr & ~0x88 ) == 0 )
+		{
+			data = 0x00;
+		}
+
+		switch( attr )
+		{
+		case 0x70:
+		case 0xF0:
+			bg = 2;
+			fg = 0;
+			break;
+		case 0x78:
+		case 0xF8:
+			bg = 2;
+			fg = 1;
+			break;
+		}
+
+		if ( ( attr & 0x07 ) == 0x01 )
+		{
+			data = 0xFF;
+		}
+
+		if ( i == cursor_x )
+		{
+			if ( m_framecnt & 0x08 )
+			{
+				data = 0xFF;
+			}
+		}
+		else
+		{
+			if ( ( attr & 0x80 ) && ( m_framecnt & 0x10 ) )
+			{
+				data = 0x00;
+			}
+		}
+
+		*p = palette[( data & 0x80 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x40 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x20 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x10 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x08 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x04 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x02 ) ? fg : bg]; p++;
+		*p = palette[( data & 0x01 ) ? fg : bg]; p++;
+	}
+}
+
+WRITE8_MEMBER( isa8_epc_mda_device::mode_control_w )
+{
+	m_mode_control = data;
+
+	switch( m_mode_control & 0x2a )
+	{
+	case 0x08:
+		m_update_row_type = MDA_LOWRES_TEXT_INTEN;
+		break;
+	case 0x28:
+		m_update_row_type = MDA_LOWRES_TEXT_BLINK;
+		break;
+	default:
+		m_update_row_type = -1;
+	}
+}
+
+MC6845_UPDATE_ROW( isa8_epc_mda_device::crtc_update_row )
 {
 	if (m_update_row_type == -1)
 		return;
