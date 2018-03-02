@@ -982,14 +982,6 @@ MC6845_UPDATE_ROW( isa8_ec1840_0002_device::crtc_update_row )
   Ericsson PC MDA
 
 ******************************************************************************/
-/*
-When the Hercules changes to graphics mode, the number of pixels per access and
-clock divider should be changed. The correct mc6845 implementation does not
-allow this.
-
-The divder/pixels per 6845 clock is 9 for text mode and 16 for graphics mode.
-*/
-
 static GFXDECODE_START( pcepc )
 	GFXDECODE_ENTRY( "gfx1", 0x0000, pc_16_charlayout, 1, 1 )
 GFXDECODE_END
