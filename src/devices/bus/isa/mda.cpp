@@ -982,6 +982,84 @@ MC6845_UPDATE_ROW( isa8_ec1840_0002_device::crtc_update_row )
   Ericsson PC MDA
 
 ******************************************************************************/
+
+/* PCB layouts and assembly years from online pictures and physical unit.
+ Ericsson   -  marked SPVT02 8301 60 53-10, assembled in 1985 indicated by chip dates
+ +--------------------------------------------------------------------------------------+ ___
+ |	IC1  IC2   IC3   IC4   IC5 +-IC15--EPROM-+   IC6      IC7      IC8    S1        ||
+ |                                 |8363 65 14-80|                                      ||
+ | IC9  IC10 IC11  IC12  IC13  IC14|CG 50821 A64 |+------------------++-IC24 EPROM--+   ||
+ |                                 +-------------+| CRTC HD46505SP-1 ||10-40VP      |   ||
+ | IC16 IC17 IC18  IC19  IC20  IC21     IC22      | IC23 HD68A45SP   ||402 28 A19   | J4|| not
+ |                                                +------------------++-------------+   || mounted
+ | IC25 IC26 IC27  IC28  IC29  IC30       IC31       IC32      IC33      IC34           ||
+ |                                                                                     O-|__
+ | IC35 IC36 IC37  IC38  IC39  IC40       IC41       IC42      IC43      IC44           ||  |
+ |                                                                                      ||DB15
+ | IC45 IC46 IC47  IC48  IC49  IC50       IC51       IC52      IC53      IC54           ||  |
+ |                                                                                      ||__|
+ | IC55 IC56 IC57  IC58  IC59  IC60       IC61       IC62      IC63      IC64          O-|
+ |                                                                               J1A    ||
+ | IC65 IC66 IC67 IC68 IC69 IC70 IC71 IC72 +--------------------------------------------+|
+ +-----------------------------------------+    |||||||||  |||||||||||||||||||||||||     |
+   I85565  A85571 (labels)                                                               |
+                                                                                         |
+
+ IC's (from photos)
+ ------------------------------------------------------------------------------
+ IC1  74F109                              IC26 74F86                                IC51 TMS4416-15NL 4 x 16Kbits DRAM
+ IC2  74LS393                             IC27 74LS08                               IC52 74ALS574
+ IC3  74F64                               IC28 74F153                               IC53 74LS138
+ IC4  74ALS299                            IC29 74LS174                              IC54 74F86
+ IC5  74LS375                             IC30 74LS374                              IC55 74F109
+ IC6  74LS151                             IC31 74LS374                              IC56 74F32
+ IC7  74LS153                             IC32 74ALS574                             IC57 74F109
+ IC8  74LS389?                            IC33 74LS08                               IC58 74F00?
+ IC9  74F02                               IC34 74LS245                              IC59 74LS244
+ IC10 74ALS109                            IC35 74F10?                               IC60 TMS4416-15NL 4 x 16Kbits DRAM
+ IC11 Crystal 17.040MHz                   IC36 74LS02                               IC61 TMS4416-15NL 4 x 16Kbits DRAM
+ IC12 74F64                               IC37 74LS00                               IC62 74ALS574
+ IC13 74ALS299                            IC38 74F374                               IC63 74LS138
+ IC14 PAL? 10-70ART40101                  IC39 74LS125                              IC64 74LS245
+ IC15 EPROM 8363 65 14-80 CG 50821 A64    IC40 74LS244                              IC65 74LS00
+ IC16 Crystal 19.170MHz                   IC41 74LS244                              IC66 74LS02
+ IC17 74LS10                              IC42 74LS574                              IC67 74LS51
+ IC18 74F08                               IC43 74LS32                               IC68 74LS04
+ IC19 74ALS574                            IC44 MC10124 - TTL to MECL converter      IC69 74LS153
+ IC20 74LS299                             IC45 74LS109                              IC70 74LS109
+ IC21 74LS273                             IC46 74LS00                               IC71 74LS138
+ IC22 74ALS574                            IC47 74F194                               IC72 74LS139
+ IC23 CRTC HD46505SP,HD68A45SP            IC48 74F04 
+ IC24 EPROM 2764, 10-40 VP 402 28 A19     IC49 74LS174
+ IC25 74ALS109                            IC50 TMS4416-15NL 4 x 16Kbits DRAM
+
+ General description
+ -------------------
+ The PCB has a 2 bit DIP switch S1 and a DB15 non standard video connector. There is also an unsoldered J4 connector
+ above the DB15 but no hole prepared for a connector in the plate. Above the J4 connector there is a two pin PCB connector
+ that probably receives the power for the monitor for the DB15 from the PSU.
+
+ Just below IC65 and IC66 there are two labels saying "I 85565" and "A E85571" respectively
+
+ Video cable, card DB15 <---> monitor DB25
+ ---------------------------------------------------
+  Ericsson       2  +VS             4  Ericsson
+  Monochrome     3  VS return       2  Monochrome HR
+  HR Graphics	10  +VS            17  Monitor 3111
+  Board 1070	11  VS return      15
+		 4  VSYNC           6
+		12  VSYNC          19
+		 5  HSYNC           7
+		13  HSYNC          20
+		 6  High intensity  8
+		14  High intensity 21
+		 7  Video           9
+		15  Video          22
+                 8  GND            11
+
+ */
+
+
 static GFXDECODE_START( pcepc )
 	GFXDECODE_ENTRY( "gfx1", 0x0000, pc_16_charlayout, 1, 1 )
 GFXDECODE_END
@@ -995,7 +1073,7 @@ ROM_END
 //**************************************************************************
 //  GLOBAL VARIABLES
 //**************************************************************************
-DEFINE_DEVICE_TYPE(ISA8_EPC_MDA, isa8_epc_mda_device, "isa_epc_mda", "Ericsson PC Monochrome Display Adapter")
+DEFINE_DEVICE_TYPE(ISA8_EPC_MDA, isa8_epc_mda_device, "isa_epc_mda", "Ericsson PC Monochrome HR Graphics Board 1070")
 
 
 //-------------------------------------------------
@@ -1012,7 +1090,7 @@ MACHINE_CONFIG_START(isa8_epc_mda_device::device_add_mconfig)
 	MCFG_MC6845_ADD( MDA_MC6845_NAME, MC6845, MDA_SCREEN_NAME, MDA_CLOCK/8)
 	MCFG_MC6845_SHOW_BORDER_AREA(false)
 	MCFG_MC6845_CHAR_WIDTH(8)
-	MCFG_MC6845_UPDATE_ROW_CB(isa8_mda_device, crtc_update_row)
+	MCFG_MC6845_UPDATE_ROW_CB(isa8_epc_mda_device, crtc_update_row)
 	MCFG_MC6845_OUT_HSYNC_CB(WRITELINE(isa8_mda_device, hsync_changed))
 	MCFG_MC6845_OUT_VSYNC_CB(WRITELINE(isa8_mda_device, vsync_changed))
 
@@ -1037,7 +1115,10 @@ const tiny_rom_entry *isa8_epc_mda_device::device_rom_region() const
 //-------------------------------------------------
 
 isa8_epc_mda_device::isa8_epc_mda_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-	isa8_mda_device(mconfig, ISA8_EC1840_0002, tag, owner, clock), m_soft_chr_gen(nullptr)
+	isa8_mda_device(mconfig, ISA8_EPC_MDA, tag, owner, clock), m_soft_chr_gen(nullptr)
+	, m_s1(*this, "S1")
+	, m_color_mode(0)
+	, m_mode_control2(0)
 {
 }
 
@@ -1047,11 +1128,24 @@ isa8_epc_mda_device::isa8_epc_mda_device(const machine_config &mconfig, const ch
 
 void isa8_epc_mda_device::device_start()
 {
-	isa8_mda_device::device_start();
+	if (m_palette != nullptr && !m_palette->started())
+		throw device_missing_dependencies();
 
-	m_soft_chr_gen = std::make_unique<uint8_t[]>(0x2000);
-	m_isa->install_bank(0xdc000, 0xddfff, "bank_chargen", m_soft_chr_gen.get());
-	m_isa->install_bank(0xde000, 0xdffff, "bank_chargen", m_soft_chr_gen.get());
+	m_videoram.resize(0x8000);
+	set_isa_device();
+	m_isa->install_device(0x3b0, 0x3bf, read8_delegate( FUNC(isa8_epc_mda_device::io_read), this ), write8_delegate( FUNC(isa8_epc_mda_device::io_write), this ) );
+	m_isa->install_device(0x3d0, 0x3df, read8_delegate( FUNC(isa8_epc_mda_device::io_read), this ), write8_delegate( FUNC(isa8_epc_mda_device::io_write), this ) );
+	m_isa->install_bank(0xb0000, 0xb7fff, "bank_epc", &m_videoram[0]); // Monochrome emulation mode VRAM address
+	m_isa->install_bank(0xb8000, 0xbffff, "bank_epc", &m_videoram[0]); // Color emulation mode VRAM address
+
+	/* Initialise the mda palette */
+	for (int i = 0; i < 4; i++)
+		m_palette->set_pen_color(i, rgb_t(mda_palette[i][0], mda_palette[i][1], mda_palette[i][2]));
+#if 0
+	/* Initialise the mda palette */
+	for(int i = 0; i < (sizeof(mda_palette) / 3); i++)
+		m_palette->set_pen_color(i, mda_palette[i][0], mda_palette[i][1], mda_palette[i][2]);
+#endif
 }
 
 void isa8_epc_mda_device::device_reset()
@@ -1059,6 +1153,82 @@ void isa8_epc_mda_device::device_reset()
 	isa8_mda_device::device_reset();
 
 	m_chr_gen = m_soft_chr_gen.get();
+	m_color_mode = m_s1->read();
+}
+
+/*
+ * Register Address table from the manual
+ * Ericsson name          MDA mode   CGA mode  Standard name
+ *-------------------------------------------------------------------------------
+ * 6845 Address Registers 0x3b4      0x3d4     wo CRT Index reg
+ * 6845 Data Registers    0x3b5      0x3d5     wo CRT Data reg
+ * Mode Register 1        0x3b8      0x3d8     rw MDA/CGA mode reg
+ * Mode Register 2        0x3bf      0x3df     rw CRT/CPU page reg (PCjr only)
+ * Status Register        0x3ba      0x3da     r  CGA/MDA status reg 
+ *                                              w EGA/VGA feature ccontrol reg
+ */
+WRITE8_MEMBER( isa8_epc_mda_device::io_write)
+{
+	LOG("%s: %04x <- %02x\n", FUNCNAME, offset, data);
+	mc6845_device *mc6845 = subdevice<mc6845_device>(MDA_MC6845_NAME);
+	//pc_lpt_device *lpt = subdevice<pc_lpt_device>("lpt");
+	switch( offset )
+	{
+		case 0x04:
+			LOGSETUP(" - 6845 address write\n");
+			mc6845->address_w( space, offset, data );
+			break;
+		case 0x05:
+			LOGSETUP(" - 6845 register write\n");
+			mc6845->register_w( space, offset, data );
+			break;
+		case 0x08: // Mode 1 reg
+			LOGSETUP(" - Mode register 1 write\n");
+			m_mode_control = data;
+			m_update_row_type = ((data & 0x20) == 0 ? MDA_LOWRES_TEXT_INTEN : MDA_LOWRES_TEXT_BLINK);
+			m_update_row_type = -1; // disable display until correctly implemented
+			break;
+		case 0x0f: // Mode 2 reg
+			LOGSETUP(" - Mode register 2 write\n");
+			m_mode_control2 = data;
+			break;
+		default:
+			LOGSETUP("Wrong write offset:%02x\n", offset);
+	}
+}
+
+READ8_MEMBER( isa8_epc_mda_device::io_read)
+{
+	LOG("%s: %04x <- ???\n", FUNCNAME, offset);
+	int data = 0xff;
+	mc6845_device *mc6845 = subdevice<mc6845_device>(MDA_MC6845_NAME);
+	//pc_lpt_device *lpt = subdevice<pc_lpt_device>("lpt");
+	switch( offset )
+	{
+		case 0x04:
+			LOGR(" - 6845 address read\n");
+			break;
+		case 0x05:
+			LOGR(" - 6845 register read\n");
+			data = mc6845->register_r( space, offset );
+			break;
+		case 0x08: // Mode 1 reg
+			LOGR(" - Mode register 1 read\n");
+			data = m_mode_control;
+			break;
+		case 0x0a: // Status
+			LOGR(" - Status register read\n");
+			data = status_r(space, offset);
+			break;
+		case 0x0f: // Mode 2 reg
+			LOGR(" - Mode register 2 read\n");
+			data = m_mode_control2;
+			break;
+		default:
+		  LOGSETUP("Wrong read offset:%02x\n", offset);
+	}
+	LOG(" !!!: %04x <- %02x\n", offset, data);
+	return data;
 }
 
 
@@ -1198,6 +1368,7 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_blink_update_row )
 	}
 }
 
+#if 0
 WRITE8_MEMBER( isa8_epc_mda_device::mode_control_w )
 {
 	m_mode_control = data;
@@ -1214,6 +1385,7 @@ WRITE8_MEMBER( isa8_epc_mda_device::mode_control_w )
 		m_update_row_type = -1;
 	}
 }
+#endif
 
 MC6845_UPDATE_ROW( isa8_epc_mda_device::crtc_update_row )
 {
@@ -1229,4 +1401,18 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::crtc_update_row )
 			mda_lowres_text_blink_update_row(bitmap, cliprect, ma, ra, y, x_count, cursor_x, de, hbp, vbp);
 			break;
 	}
+}
+
+//--------------------------------------------------------------------
+//  Port definition - Needs refactoring as becoming ridiculously long
+//--------------------------------------------------------------------
+static INPUT_PORTS_START( epc_mda_dpsw )
+	PORT_START("S1")
+	PORT_DIPNAME( 0x03, 0x00, "Color emulation")
+	PORT_DIPSETTING( 0x01, "Enabled" )
+INPUT_PORTS_END
+
+ioport_constructor isa8_epc_mda_device::device_input_ports() const
+{
+	return INPUT_PORTS_NAME( epc_mda_dpsw );
 }
