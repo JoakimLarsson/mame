@@ -26,8 +26,11 @@
 #define LOG_READ    (1U << 1)
 #define LOG_SETUP   (1U << 2)
 #define LOG_ROW     (1U << 3)
+#define LOG_MODE    (1U << 4)
+#define LOG_CHRG    (1U << 5)
+#define LOG_STAT    (1U << 6)
 
-#define VERBOSE (LOG_GENERAL | LOG_SETUP)
+#define VERBOSE (LOG_MODE|LOG_STAT)
 #define LOG_OUTPUT_STREAM std::cout
 
 #include "logmacro.h"
@@ -35,6 +38,9 @@
 #define LOGR(...)     LOGMASKED(LOG_READ,  __VA_ARGS__)
 #define LOGSETUP(...) LOGMASKED(LOG_SETUP, __VA_ARGS__)
 #define LOGROW(...)   LOGMASKED(LOG_ROW,   __VA_ARGS__)
+#define LOGMODE(...)  LOGMASKED(LOG_MODE,  __VA_ARGS__)
+#define LOGCHRG(...)  LOGMASKED(LOG_CHRG,  __VA_ARGS__)
+#define LOGSTAT(...)  LOGMASKED(LOG_STAT,  __VA_ARGS__)
 
 #ifdef _MSC_VER
 #define FUNCNAME __func__
@@ -1066,8 +1072,8 @@ GFXDECODE_END
 
 ROM_START( epc )
 	ROM_REGION(0x2000,"gfx1", 0)
-//ROM_LOAD("8363_65_14-80_CG_50821_A64.BIN",  0x00000, 0x2000, CRC(be709786) SHA1(38ab26224bbe66bbe2bb2ccac29b41cbf78bdbf8))
-	ROM_LOAD("10-40_VP_402_28_IC_24_A19.BIN",  0x00000, 0x2000, CRC(2aa53b92) SHA1(87051a037249eb631d7d2191bc0e925125c60f39))
+	ROM_LOAD("8363_65_14-80_CG_50821_A64.BIN",  0x00000, 0x2000, CRC(be709786) SHA1(38ab26224bbe66bbe2bb2ccac29b41cbf78bdbf8))
+//ROM_LOAD("10-40_VP_402_28_IC_24_A19.BIN",  0x00000, 0x2000, CRC(2aa53b92) SHA1(87051a037249eb631d7d2191bc0e925125c60f39))
 ROM_END
 
 //**************************************************************************
@@ -1079,15 +1085,15 @@ DEFINE_DEVICE_TYPE(ISA8_EPC_MDA, isa8_epc_mda_device, "isa_epc_mda", "Ericsson P
 //-------------------------------------------------
 //  device_add_mconfig - add device configuration
 //-------------------------------------------------
-
+/* There are two crystals on the board: 19.170Mhz and 17.040MHz TODO: verify usage */
 MACHINE_CONFIG_START(isa8_epc_mda_device::device_add_mconfig)
 	MCFG_SCREEN_ADD( MDA_SCREEN_NAME, RASTER)
-	MCFG_SCREEN_RAW_PARAMS(MDA_CLOCK, 792, 0, 640, 370, 0, 350 )
-	MCFG_SCREEN_UPDATE_DEVICE( MDA_MC6845_NAME, mc6845_device, screen_update )
+	MCFG_SCREEN_RAW_PARAMS(XTAL(19'170'000) / 4, 600, 0, 600, 400, 0, 400 ) // clock and divider are guesswork
+	MCFG_SCREEN_UPDATE_DEVICE( MDA_MC6845_NAME, h46505_device, screen_update )
 
 	MCFG_PALETTE_ADD( "palette", 4 )
 
-	MCFG_MC6845_ADD( MDA_MC6845_NAME, MC6845, MDA_SCREEN_NAME, MDA_CLOCK/8)
+	MCFG_MC6845_ADD( MDA_MC6845_NAME, H46505, MDA_SCREEN_NAME, XTAL(19'170'000) / 16) // clock and divider are guesswork
 	MCFG_MC6845_SHOW_BORDER_AREA(false)
 	MCFG_MC6845_CHAR_WIDTH(8)
 	MCFG_MC6845_UPDATE_ROW_CB(isa8_epc_mda_device, crtc_update_row)
@@ -1152,8 +1158,9 @@ void isa8_epc_mda_device::device_reset()
 {
 	isa8_mda_device::device_reset();
 
-	m_chr_gen = m_soft_chr_gen.get();
+	//m_chr_gen = m_soft_chr_gen.get();
 	m_color_mode = m_s1->read();
+	LOGSETUP("%s: m_color_mode:%02x\n", FUNCNAME, m_color_mode);
 }
 
 /*
@@ -1171,7 +1178,6 @@ WRITE8_MEMBER( isa8_epc_mda_device::io_write)
 {
 	LOG("%s: %04x <- %02x\n", FUNCNAME, offset, data);
 	mc6845_device *mc6845 = subdevice<mc6845_device>(MDA_MC6845_NAME);
-	//pc_lpt_device *lpt = subdevice<pc_lpt_device>("lpt");
 	switch( offset )
 	{
 		case 0x04:
@@ -1183,17 +1189,25 @@ WRITE8_MEMBER( isa8_epc_mda_device::io_write)
 			mc6845->register_w( space, offset, data );
 			break;
 		case 0x08: // Mode 1 reg
-			LOGSETUP(" - Mode register 1 write\n");
+			LOGMODE(" - Mode register 1 write: %02x\n", data);
+			LOGMODE("   MSB attribute: %s\n", (data & 0x20) == 0 ? "intensity" : "blink");
+			LOGMODE("   Horizontal px: %s\n", (data & 0x10) == 0 ? "320/LR" : "640/HR");
+			LOGMODE("   Video        : %s\n", (data & 0x08) == 0 ? "Disabled" : "Enabled");
+			LOGMODE("   Mode         : %s\n", (data & 0x02) == 0 ? "Text" : "Graphics");
+			LOGMODE("   Text columns : %d\n", (data & 0x01) == 0 ? 40 : 80);
 			m_mode_control = data;
 			m_update_row_type = ((data & 0x20) == 0 ? MDA_LOWRES_TEXT_INTEN : MDA_LOWRES_TEXT_BLINK);
-			m_update_row_type = -1; // disable display until correctly implemented
 			break;
 		case 0x0f: // Mode 2 reg
-			LOGSETUP(" - Mode register 2 write\n");
+			LOGMODE(" - Mode register 2 write: %02x\n", data);
+			LOGMODE("   Vertical px  : %s\n", (data & 0x80) == 0 ? "200" : "400");
+			LOGMODE("   Character set: %s\n", (data & 0x40) == 0 ? "0" : "1");
+			LOGMODE("   Emulated     : %s\n", (data & 0x04) == 0 ? "Color" : "Monochrome");
 			m_mode_control2 = data;
 			break;
 		default:
-			LOGSETUP("Wrong write offset:%02x\n", offset);
+			LOG("EPC MDA: io_write at wrong offset:%02x\n", offset);
+			logerror("EPC MDA: io_write at wrong offset:%02x\n", offset);
 	}
 }
 
@@ -1202,7 +1216,6 @@ READ8_MEMBER( isa8_epc_mda_device::io_read)
 	LOG("%s: %04x <- ???\n", FUNCNAME, offset);
 	int data = 0xff;
 	mc6845_device *mc6845 = subdevice<mc6845_device>(MDA_MC6845_NAME);
-	//pc_lpt_device *lpt = subdevice<pc_lpt_device>("lpt");
 	switch( offset )
 	{
 		case 0x04:
@@ -1213,19 +1226,20 @@ READ8_MEMBER( isa8_epc_mda_device::io_read)
 			data = mc6845->register_r( space, offset );
 			break;
 		case 0x08: // Mode 1 reg
-			LOGR(" - Mode register 1 read\n");
 			data = m_mode_control;
+			LOGMODE(" - Mode register 1 read: %02x\n", data);
 			break;
 		case 0x0a: // Status
-			LOGR(" - Status register read\n");
-			data = status_r(space, offset);
+			data = (m_vsync != 0 ? 0x08 : 0) | (m_hsync != 0 ? 1 : 0);
+			LOGSTAT(" - Status register read: %02x\n", data);
 			break;
 		case 0x0f: // Mode 2 reg
-			LOGR(" - Mode register 2 read\n");
 			data = m_mode_control2;
+			LOGMODE(" - Mode register 2 read: %02x\n", data);
 			break;
 		default:
-		  LOGSETUP("Wrong read offset:%02x\n", offset);
+			LOG("EPC MDA: io_read at wrong offset:%02x\n", offset);
+			logerror("EPC MDA: io_read at wrong offset:%02x\n", offset);
 	}
 	LOG(" !!!: %04x <- %02x\n", offset, data);
 	return data;
@@ -1235,6 +1249,31 @@ READ8_MEMBER( isa8_epc_mda_device::io_read)
 /***************************************************************************
   Draw text mode with 80x25 characters (default) and intense background.
   The character cell size is 8x14.
+
+- Mode register 1 write: 29
+   MSB attribute: blink
+   Horizontal px: 320/LR
+   Video        : Enabled
+   Mode         : Text
+   Text columns : 80
+
+ - Mode register 2 write: 00
+   Vertical px  : 200
+   Character set: 0
+   Emulated     : Color
+
+Mode register 1 write: 29
+   MSB attribute: blink
+   Horizontal px: 320/LR
+   Video        : Enabled
+   Mode         : Text
+   Text columns : 80
+
+ - Mode register 2 write: 04
+   Vertical px  : 200
+   Character set: 0
+   Emulated     : Monochrome
+
 ***************************************************************************/
 
 MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_inten_update_row )
@@ -1244,16 +1283,18 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_inten_update_row )
 	uint16_t  chr_base = ra;
 	int i;
 
-	if ( y == 0 ) LOGROW("%11.6f: %-24s\n", machine().time().as_double(), FUNCNAME);
+	if ( y == 0 ) LOGROW("%11.6f %s\n - y:%d x_count%d\n", machine().time().as_double(), FUNCNAME, y, x_count);
+
 	for ( i = 0; i < x_count; i++ )
 	{
 		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
 		uint8_t chr = m_videoram[ offset ];
 		uint8_t attr = m_videoram[ offset + 1 ];
-		uint8_t data = m_chr_gen[ (chr_base + chr * 16) << 1 ];
+		uint8_t data = m_chr_gen[ chr_base + chr * 16 ];
 		uint8_t fg = ( attr & 0x08 ) ? 3 : 2;
 		uint8_t bg = 0;
 
+		if (y == 0 && i == 0) LOGCHRG(" - Offset: %04x Chr: '%c'[%02x] Attr: %02x Chr_base: %04x\n", offset, chr, chr, attr, chr_base);
 		if ( ( attr & ~0x88 ) == 0 )
 		{
 			data = 0x00;
@@ -1298,7 +1339,7 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_inten_update_row )
 
 /***************************************************************************
   Draw text mode with 80x25 characters (default) and blinking characters.
-  The character cell size is 8x14.
+  The character cell size is 9x16, 8x8 or 8x16 depending on mode.
 ***************************************************************************/
 
 MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_blink_update_row )
@@ -1308,16 +1349,18 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_blink_update_row )
 	uint16_t  chr_base = ra;
 	int i;
 
-	if ( y == 0 ) LOGROW("%11.6f: %-24s\n", machine().time().as_double(), FUNCNAME);
+	if ( y == 0 ) LOGROW("%11.6f %s\n - y:%d x_count%d\n", machine().time().as_double(), FUNCNAME, y, x_count);
+
 	for ( i = 0; i < x_count; i++ )
 	{
 		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
 		uint8_t chr = m_videoram[ offset ];
 		uint8_t attr = m_videoram[ offset + 1 ];
-		uint8_t data = m_chr_gen[ (chr_base + chr * 16) << 1 ];
+		uint8_t data = m_chr_gen[ chr_base + chr * 16];
 		uint8_t fg = ( attr & 0x08 ) ? 3 : 2;
 		uint8_t bg = 0;
 
+		if (y == 0 && i == 0) LOGCHRG(" - Offset: %04x Chr: '%c'[%02x] Attr: %02x Chr_base: %04x\n", offset, chr, chr, attr, chr_base);
 		if ( ( attr & ~0x88 ) == 0 )
 		{
 			data = 0x00;
@@ -1389,9 +1432,6 @@ WRITE8_MEMBER( isa8_epc_mda_device::mode_control_w )
 
 MC6845_UPDATE_ROW( isa8_epc_mda_device::crtc_update_row )
 {
-	if (m_update_row_type == -1)
-		return;
-
 	switch (m_update_row_type)
 	{
 		case MDA_LOWRES_TEXT_INTEN:
@@ -1408,8 +1448,10 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::crtc_update_row )
 //--------------------------------------------------------------------
 static INPUT_PORTS_START( epc_mda_dpsw )
 	PORT_START("S1")
-	PORT_DIPNAME( 0x03, 0x00, "Color emulation")
+	PORT_DIPNAME( 0x01, 0x00, "Color emulation") PORT_DIPLOCATION("S1:1")
+	PORT_DIPSETTING( 0x00, "Disabled" )
 	PORT_DIPSETTING( 0x01, "Enabled" )
+	PORT_DIPUNUSED_DIPLOC(0x02, 0x02, "S1:2")
 INPUT_PORTS_END
 
 ioport_constructor isa8_epc_mda_device::device_input_ports() const
