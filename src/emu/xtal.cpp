@@ -197,6 +197,7 @@ const double XTAL::known_xtals[] = {
 	 16'000'000, /* 16_MHz_XTAL            Extremely common, used on 100's of PCBs */
 	 16'097'280, /* 16.09728_MHz_XTAL      DEC VT240 (1024 * 262 * 60) */
 	 16'128'000, /* 16.128_MHz_XTAL        Fujitsu FM-7 */
+	 16'257'000, /*                        IBM MDA (Monochrom Display Adapter) */
 	 16'384'000, /* 16.384_MHz_XTAL        - */
 	 16'400'000, /* 16.4_MHz_XTAL          MS 6102 */
 	 16'588'800, /* 16.5888_MHz_XTAL       SM 7238 */

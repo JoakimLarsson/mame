@@ -48,7 +48,8 @@
 #define FUNCNAME __PRETTY_FUNCTION__
 #endif
 
-#define MDA_CLOCK   16257000
+//#define MDA_CLOCK   16257000
+#define MDA_CLOCK   XTAL(16'257'000)
 
 static const unsigned char mda_palette[4][3] =
 {
