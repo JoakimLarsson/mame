@@ -48,7 +48,6 @@
 #define FUNCNAME __PRETTY_FUNCTION__
 #endif
 
-//#define MDA_CLOCK   16257000
 #define MDA_CLOCK   XTAL(16'257'000)
 
 static const unsigned char mda_palette[4][3] =
@@ -226,7 +225,6 @@ void isa8_mda_device::device_reset()
   The character cell size is 9x15. Column 9 is column 8 repeated for
   character codes 176 to 223.
 ***************************************************************************/
-
 MC6845_UPDATE_ROW( isa8_mda_device::mda_text_inten_update_row )
 {
 	const rgb_t *palette = m_palette->palette()->entry_list_raw();
@@ -374,7 +372,6 @@ MC6845_UPDATE_ROW( isa8_mda_device::mda_text_blink_update_row )
 		}
 	}
 }
-
 
 MC6845_UPDATE_ROW( isa8_mda_device::crtc_update_row )
 {
@@ -986,7 +983,7 @@ MC6845_UPDATE_ROW( isa8_ec1840_0002_device::crtc_update_row )
 
 /*****************************************************************************
 
-  Ericsson PC MDA
+  Ericsson PC Monochrome HR Graphics Board 1070
 
 ******************************************************************************/
 
@@ -1052,8 +1049,8 @@ MC6845_UPDATE_ROW( isa8_ec1840_0002_device::crtc_update_row )
  ---------------------------------------------------
   Ericsson       2  +VS             4  Ericsson
   Monochrome     3  VS return       2  Monochrome HR
-  HR Graphics	10  +VS            17  Monitor 3111
-  Board 1070	11  VS return      15
+  HR Graphics	10  +VS            17  Monitors 3111 (Amber) or 
+  Board 1070	11  VS return      15  3712/3715 (Black & White)
 		 4  VSYNC           6
 		12  VSYNC          19
 		 5  HSYNC           7
@@ -1064,8 +1061,11 @@ MC6845_UPDATE_ROW( isa8_ec1840_0002_device::crtc_update_row )
 		15  Video          22
                  8  GND            11
 
+  This board is normaly used with an Ericsson monitor due to the non standard connector.
+  Trivia: https://www.pinterest.se/pin/203084264425177097/
  */
 
+#define EPC_MDA_SCREEN "epc_mda_screen"
 
 static GFXDECODE_START( pcepc )
 	GFXDECODE_ENTRY( "gfx1", 0x0000, pc_16_charlayout, 1, 1 )
@@ -1086,15 +1086,17 @@ DEFINE_DEVICE_TYPE(ISA8_EPC_MDA, isa8_epc_mda_device, "isa_epc_mda", "Ericsson P
 //-------------------------------------------------
 //  device_add_mconfig - add device configuration
 //-------------------------------------------------
-/* There are two crystals on the board: 19.170Mhz and 17.040MHz TODO: verify usage */
+/* There are two crystals on the board: 19.170Mhz and 17.040MHz  TODO: verify use */
+/* Text modes uses 720x400 base resolution and the Graphics modes 320/640x200/400 */
+/* This matches the difference between the crystals so we assume this for now     */
 MACHINE_CONFIG_START(isa8_epc_mda_device::device_add_mconfig)
-	MCFG_SCREEN_ADD( MDA_SCREEN_NAME, RASTER)
-	MCFG_SCREEN_RAW_PARAMS(XTAL(19'170'000) / 4, 600, 0, 600, 400, 0, 400 ) // clock and divider are guesswork
+	MCFG_SCREEN_ADD( EPC_MDA_SCREEN, RASTER)
+	MCFG_SCREEN_RAW_PARAMS(XTAL(19'170'000) / 4, 720, 0, 720, 400, 0, 400 ) // clock and divider are guesswork
 	MCFG_SCREEN_UPDATE_DEVICE( MDA_MC6845_NAME, h46505_device, screen_update )
 
 	MCFG_PALETTE_ADD( "palette", 4 )
 
-	MCFG_MC6845_ADD( MDA_MC6845_NAME, H46505, MDA_SCREEN_NAME, XTAL(19'170'000) / 16) // clock and divider are guesswork
+	MCFG_MC6845_ADD( MDA_MC6845_NAME, H46505, EPC_MDA_SCREEN, XTAL(19'170'000) / 16) // clock and divider are guesswork
 	MCFG_MC6845_SHOW_BORDER_AREA(false)
 	MCFG_MC6845_CHAR_WIDTH(8)
 	MCFG_MC6845_UPDATE_ROW_CB(isa8_epc_mda_device, crtc_update_row)
@@ -1126,6 +1128,8 @@ isa8_epc_mda_device::isa8_epc_mda_device(const machine_config &mconfig, const ch
 	, m_s1(*this, "S1")
 	, m_color_mode(0)
 	, m_mode_control2(0)
+	, m_screen(*this, EPC_MDA_SCREEN)
+	, m_io_monitor(*this, "MONITOR")
 {
 }
 
@@ -1138,20 +1142,31 @@ void isa8_epc_mda_device::device_start()
 	if (m_palette != nullptr && !m_palette->started())
 		throw device_missing_dependencies();
 
+	/* Palette for use with the Ericsson Amber Monochrome HR CRT monitor 3111, P3 phospor 602nm 255,183, 0 */
+	m_3111_pal[0] = rgb_t(  0,   0,     0); // black
+	m_3111_pal[1] = rgb_t(  143, 103,   0); // dim
+	m_3111_pal[2] = rgb_t(  191, 137,   0); // normal
+	m_3111_pal[3] = rgb_t(  255, 183,   0); // bright
+
+	/* Palette for use with the Ericsson B&W Monochrome HR CRT monitor 3712/3715 */
+	m_371x_pal[0] = rgb_t(    0,   0,   0); // black
+	m_371x_pal[1] = rgb_t(  143, 143, 143); // dim
+	m_371x_pal[2] = rgb_t(  191, 191, 191); // normal
+	m_371x_pal[3] = rgb_t(  255, 255, 255); // bright
+
+	/* Init a default palette */
+	m_pal = &m_3111_pal; // In case screen starts rendering before device_reset where we read the settings
+
 	m_videoram.resize(0x8000);
 	set_isa_device();
 	m_isa->install_device(0x3b0, 0x3bf, read8_delegate( FUNC(isa8_epc_mda_device::io_read), this ), write8_delegate( FUNC(isa8_epc_mda_device::io_write), this ) );
 	m_isa->install_device(0x3d0, 0x3df, read8_delegate( FUNC(isa8_epc_mda_device::io_read), this ), write8_delegate( FUNC(isa8_epc_mda_device::io_write), this ) );
 	m_isa->install_bank(0xb0000, 0xb7fff, "bank_epc", &m_videoram[0]); // Monochrome emulation mode VRAM address
 	m_isa->install_bank(0xb8000, 0xbffff, "bank_epc", &m_videoram[0]); // Color emulation mode VRAM address
-
+#if 0
 	/* Initialise the mda palette */
 	for (int i = 0; i < 4; i++)
 		m_palette->set_pen_color(i, rgb_t(mda_palette[i][0], mda_palette[i][1], mda_palette[i][2]));
-#if 0
-	/* Initialise the mda palette */
-	for(int i = 0; i < (sizeof(mda_palette) / 3); i++)
-		m_palette->set_pen_color(i, mda_palette[i][0], mda_palette[i][1], mda_palette[i][2]);
 #endif
 }
 
@@ -1159,9 +1174,10 @@ void isa8_epc_mda_device::device_reset()
 {
 	isa8_mda_device::device_reset();
 
-	//m_chr_gen = m_soft_chr_gen.get();
 	m_color_mode = m_s1->read();
 	LOGSETUP("%s: m_color_mode:%02x\n", FUNCNAME, m_color_mode);
+	m_pal = (m_io_monitor-> read() & 1) == 1 ? &m_371x_pal : &m_3111_pal;
+	m_vmode = 0;
 }
 
 /*
@@ -1170,10 +1186,10 @@ void isa8_epc_mda_device::device_reset()
  *-------------------------------------------------------------------------------
  * 6845 Address Registers 0x3b4      0x3d4     wo CRT Index reg
  * 6845 Data Registers    0x3b5      0x3d5     wo CRT Data reg
- * Mode Register 1        0x3b8      0x3d8     rw MDA/CGA mode reg
- * Mode Register 2        0x3bf      0x3df     rw CRT/CPU page reg (PCjr only)
- * Status Register        0x3ba      0x3da     r  CGA/MDA status reg 
- *                                              w EGA/VGA feature ccontrol reg
+ * Mode Register 1        0x3b8      0x3d8     rw MDA/CGA mode reg (bit 0,1 & 4 incompatible) 
+ * Mode Register 2        0x3bf      0x3df     rw CRT/CPU page reg (incompatible w PCjr only)
+ * Status Register        0x3ba      0x3da     r  CGA/MDA status reg (incompatible)
+ *                                              w EGA/VGA feature ccontrol reg (not used by this board)
  */
 WRITE8_MEMBER( isa8_epc_mda_device::io_write)
 {
@@ -1197,7 +1213,15 @@ WRITE8_MEMBER( isa8_epc_mda_device::io_write)
 			LOGMODE("   Mode         : %s\n", (data & 0x02) == 0 ? "Text" : "Graphics");
 			LOGMODE("   Text columns : %d\n", (data & 0x01) == 0 ? 40 : 80);
 			m_mode_control = data;
+			m_vmode &= ~(VM_GRAPH | VM_COLS80 | VM_HOR640);
+			m_vmode |= ((m_mode_control & 0x01) ? VM_COLS80 : 0);
+			m_vmode |= ((m_mode_control & 0x02) ? VM_GRAPH  : 0);
+			m_vmode |= ((m_mode_control & 0x10) ? VM_HOR640 : 0);
 			m_update_row_type = ((data & 0x20) == 0 ? MDA_LOWRES_TEXT_INTEN : MDA_LOWRES_TEXT_BLINK);
+			{
+				rectangle rect(0, get_xres() - 1, 0, get_yres() -1);
+				m_screen->configure(get_xres(), get_yres(), rect, HZ_TO_ATTOSECONDS(50));
+			}
 			break;
 		case 0x0f: // Mode 2 reg
 			LOGMODE(" - Mode register 2 write: %02x\n", data);
@@ -1205,6 +1229,13 @@ WRITE8_MEMBER( isa8_epc_mda_device::io_write)
 			LOGMODE("   Character set: %s\n", (data & 0x40) == 0 ? "0" : "1");
 			LOGMODE("   Emulated     : %s\n", (data & 0x04) == 0 ? "Color" : "Monochrome");
 			m_mode_control2 = data;
+			m_vmode &= ~(VM_MONO | VM_VER400);
+			m_vmode |= ((m_mode_control2 & 0x04) ? VM_MONO   : 0);
+			m_vmode |= ((m_mode_control2 & 0x80) ? VM_VER400 : 0);
+			{
+				rectangle rect(0, get_xres() - 1, 0, get_yres() -1);
+				m_screen->configure(get_xres(), get_yres(), rect, HZ_TO_ATTOSECONDS(50));
+			}
 			break;
 		default:
 			LOG("EPC MDA: io_write at wrong offset:%02x\n", offset);
@@ -1230,8 +1261,8 @@ READ8_MEMBER( isa8_epc_mda_device::io_read)
 			data = m_mode_control;
 			LOGMODE(" - Mode register 1 read: %02x\n", data);
 			break;
-		case 0x0a: // Status
-			data = (m_vsync != 0 ? 0x08 : 0) | (m_hsync != 0 ? 1 : 0);
+		case 0x0a: // Status reg: b7-6=00 board ID; b3 vert retrace; b0 horiz retrace; b5,4,2,1 unused
+			data = (m_vsync != 0 ? 0x08 : 0x00) | (m_hsync != 0 ? 0x01 : 0x00);
 			LOGSTAT(" - Status register read: %02x\n", data);
 			break;
 		case 0x0f: // Mode 2 reg
@@ -1276,10 +1307,10 @@ Mode register 1 write: 29
    Emulated     : Monochrome
 
 ***************************************************************************/
-
+#if 0
 MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_inten_update_row )
 {
-	const rgb_t *palette = m_palette->palette()->entry_list_raw();
+  //const rgb_t *palette = m_palette->palette()->entry_list_raw();
 	uint32_t  *p = &bitmap.pix32(y);
 	uint16_t  chr_base = ra;
 	int i;
@@ -1291,7 +1322,7 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_inten_update_row )
 		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
 		uint8_t chr = m_videoram[ offset ];
 		uint8_t attr = m_videoram[ offset + 1 ];
-		uint8_t data = m_chr_gen[ chr_base + chr * 16 ];
+		uint8_t data = m_chr_gen[ chr_base + chr * 16];
 		uint8_t fg = ( attr & 0x08 ) ? 3 : 2;
 		uint8_t bg = 0;
 
@@ -1345,7 +1376,7 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_inten_update_row )
 
 MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_blink_update_row )
 {
-	const rgb_t *palette = m_palette->palette()->entry_list_raw();
+  //const rgb_t *palette = m_palette->palette()->entry_list_raw();
 	uint32_t  *p = &bitmap.pix32(y);
 	uint16_t  chr_base = ra;
 	int i;
@@ -1411,28 +1442,112 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_blink_update_row )
 		*p = palette[( data & 0x01 ) ? fg : bg]; p++;
 	}
 }
-
-#if 0
-WRITE8_MEMBER( isa8_epc_mda_device::mode_control_w )
-{
-	m_mode_control = data;
-
-	switch( m_mode_control & 0x2a )
-	{
-	case 0x08:
-		m_update_row_type = MDA_LOWRES_TEXT_INTEN;
-		break;
-	case 0x28:
-		m_update_row_type = MDA_LOWRES_TEXT_BLINK;
-		break;
-	default:
-		m_update_row_type = -1;
-	}
-}
 #endif
+
+int isa8_epc_mda_device::get_xres()
+{
+  return 720;
+}
+
+int isa8_epc_mda_device::get_yres()
+{
+  return 400;
+}
 
 MC6845_UPDATE_ROW( isa8_epc_mda_device::crtc_update_row )
 {
+
+
+#if 1
+  //const rgb_t *palette = m_palette->palette()->entry_list_raw();
+	uint32_t  *p = &bitmap.pix32(y);
+	uint16_t  chr_base = ra;
+	int i;
+
+	if ( y == 0 ) LOGROW("%11.6f %s\n - y:%d x_count%d\n", machine().time().as_double(), FUNCNAME, y, x_count);
+
+	if ( (m_mode_control & 0x03) == 0) // 40x25 text mode
+	{
+	}
+	else // 80x25 text mode
+        {
+		for ( i = 0; i < x_count; i++ )
+		{
+			uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
+			uint8_t chr = m_videoram[ offset ];
+			uint8_t attr = m_videoram[ offset + 1 ];
+			uint8_t data = m_chr_gen[ chr_base + chr * 16];
+
+			// Default to light text on dark background
+			uint8_t fg = ( attr & 0x08 ) ? 3 : 2;
+			uint8_t bg = 0;
+
+			if (y == 0 && i == 0) LOGCHRG(" - Offset: %04x Chr: '%c'[%02x] Attr: %02x Chr_base: %04x\n", offset, chr, chr, attr, chr_base);
+
+			// Needs fixing
+			if ( (m_mode_control & 0x08) == 0 ||
+			     ((m_mode_control2 & 0x04) != 0 && (attr & 0x77) == 0) )
+			{
+				data = 0x00;
+			}
+			// Check bg & fg special cases
+			switch (attr & 0x77)
+			{
+			case 0x00: // Dark character on dark background
+				data = 0;
+				break;
+				
+			case 0x70: // Dark character on light background
+				bg = 2;
+				fg = 0;
+				break;
+			}
+
+			switch( attr )
+			  {
+			  case 0x70:
+			  case 0xF0:
+			    bg = 2;
+			    fg = 0;
+			    break;
+			  case 0x78:
+			  case 0xF8:
+			    bg = 2;
+			    fg = 1;
+			    break;
+			  }
+			
+			if ( ( attr & 0x07 ) == 0x01 )
+			  {
+			    data = 0xFF;
+			  }
+			
+			if ( i == cursor_x )
+			  {
+			    if ( m_framecnt & 0x08 )
+			      {
+				data = 0xFF;
+			      }
+			  }
+			else
+			  {
+			    if ( ( attr & 0x80 ) && ( m_framecnt & 0x10 ) )
+			      {
+				data = 0x00;
+			      }
+			  }
+			
+			*p = (*m_pal)[( data & 0x80 ) ? fg : bg]; p++;
+			*p = (*m_pal)[( data & 0x40 ) ? fg : bg]; p++;
+			*p = (*m_pal)[( data & 0x20 ) ? fg : bg]; p++;
+			*p = (*m_pal)[( data & 0x10 ) ? fg : bg]; p++;
+			*p = (*m_pal)[( data & 0x08 ) ? fg : bg]; p++;
+			*p = (*m_pal)[( data & 0x04 ) ? fg : bg]; p++;
+			*p = (*m_pal)[( data & 0x02 ) ? fg : bg]; p++;
+			*p = (*m_pal)[( data & 0x01 ) ? fg : bg]; p++;
+		}
+	}
+#else
 	switch (m_update_row_type)
 	{
 		case MDA_LOWRES_TEXT_INTEN:
@@ -1442,20 +1557,38 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::crtc_update_row )
 			mda_lowres_text_blink_update_row(bitmap, cliprect, ma, ra, y, x_count, cursor_x, de, hbp, vbp);
 			break;
 	}
+#endif
 }
 
 //--------------------------------------------------------------------
 //  Port definition - Needs refactoring as becoming ridiculously long
 //--------------------------------------------------------------------
-static INPUT_PORTS_START( epc_mda_dpsw )
+static INPUT_PORTS_START( epc_mda )
 	PORT_START("S1")
 	PORT_DIPNAME( 0x01, 0x00, "Color emulation") PORT_DIPLOCATION("S1:1")
 	PORT_DIPSETTING( 0x00, "Disabled" )
 	PORT_DIPSETTING( 0x01, "Enabled" )
 	PORT_DIPUNUSED_DIPLOC(0x02, 0x02, "S1:2")
+
+	PORT_START("MONITOR")
+	PORT_CONFNAME( 0x01, 0x00, "Ericsson Monochrome HR Monitors") PORT_CHANGED_MEMBER(DEVICE_SELF, isa8_epc_mda_device, monitor_changed, 0)
+	PORT_CONFSETTING(    0x00, "Amber 3111")
+	PORT_CONFSETTING(    0x01, "B&W 3712/3715")
 INPUT_PORTS_END
+
+INPUT_CHANGED_MEMBER(isa8_epc_mda_device::monitor_changed)
+{
+	if ((m_io_monitor->read() & 1) == 1)
+	{
+		m_pal = &m_371x_pal;
+	}
+	else
+	{
+		m_pal = &m_3111_pal;
+	}
+}
 
 ioport_constructor isa8_epc_mda_device::device_input_ports() const
 {
-	return INPUT_PORTS_NAME( epc_mda_dpsw );
+	return INPUT_PORTS_NAME( epc_mda );
 }

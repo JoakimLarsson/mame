@@ -143,6 +143,9 @@ public:
 
 	virtual DECLARE_READ8_MEMBER(io_read) override;
 	virtual DECLARE_WRITE8_MEMBER(io_write) override;
+	
+	/* Monitor */
+	DECLARE_INPUT_CHANGED_MEMBER(monitor_changed);
 
 protected:
 	// device-level overrides
@@ -155,16 +158,33 @@ protected:
 	virtual ioport_constructor device_input_ports() const override;
 
 private:
+	int get_xres();
+	int get_yres();
 	//virtual DECLARE_WRITE8_MEMBER(mode_control_w) override;
 
+	enum {
+		VM_COLS80 = 0x01,
+		VM_GRAPH  = 0x02,
+		VM_HOR640 = 0x04,
+		VM_MONO   = 0x08,
+		VM_VER400 = 0x10
+	};
+	
 	virtual MC6845_UPDATE_ROW( crtc_update_row ) override;
-	MC6845_UPDATE_ROW( mda_lowres_text_inten_update_row );
-	MC6845_UPDATE_ROW( mda_lowres_text_blink_update_row );
+	//MC6845_UPDATE_ROW( mda_lowres_text_inten_update_row );
+	//MC6845_UPDATE_ROW( mda_lowres_text_blink_update_row );
 
 	std::unique_ptr<uint8_t[]>   m_soft_chr_gen;
 	required_ioport m_s1;
 	uint8_t m_color_mode;
 	uint8_t m_mode_control2;
+	required_device<screen_device> m_screen;
+	required_ioport m_io_monitor;
+
+	uint8_t m_vmode;
+	rgb_t (*m_pal)[4];
+	rgb_t m_3111_pal[4];
+	rgb_t m_371x_pal[4];
 };
 
 // device type definition
