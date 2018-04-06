@@ -43,9 +43,14 @@
 
 #include "screen.h"
 
-//#define VERBOSE 1
+#define LOG_SETUP  	(1U << 1) // Shows register setup
+
+//#define VERBOSE (LOG_SETUP)
+//#define LOG_OUTPUT_STREAM std::cout
+
 #include "logmacro.h"
 
+#define LOGSETUP(...)	LOGMASKED(LOG_SETUP,  __VA_ARGS__)
 
 DEFINE_DEVICE_TYPE(MC6845,   mc6845_device,   "mc6845",   "Motorola MC6845 CRTC")
 DEFINE_DEVICE_TYPE(MC6845_1, mc6845_1_device, "mc6845_1", "Motorola MC6845-1 CRTC")
@@ -223,6 +228,18 @@ WRITE8_MEMBER( mc6845_device::register_w )
 void mc6845_device::register_w(uint8_t data)
 {
 	LOG("%s:M6845 reg 0x%02x = 0x%02x\n", machine().describe_context(), m_register_address_latch, data);
+
+	/* Omits LOGSETUP logs of cursor registers as they tend to be spammy */
+	if (m_register_address_latch < 0x0e &&
+	    m_register_address_latch != 0x0a &&
+	    m_register_address_latch != 0x0b) LOGSETUP(" * %02x <= %3u [%02x] %s\n", m_register_address_latch,
+						      data, data, std::array<char const *, 16>
+		 {{ "R0 - Horizontal Total",       "R1 - Horizontal Displayed",   "R2 - Horizontal Sync Position",
+		    "R3 - Sync Width",	           "R4 - Vertical Total",	  "R5 - Vertical Total Adjust",
+		    "R6 - Vertical Displayed",     "R7 - Vertical Sync Position", "R8 - Interlace & Skew",
+		    "R9 - Maximum Raster Address", "R10 - Cursor Start Address",  "R11 - Cursor End Address",
+		    "R12 - Start Address (H)",	   "R13 - Start Address (L)",     "R14 - Cursor (H)",
+		    "R15 - Cursor (L)" }}[(m_register_address_latch & 0x0f)]);
 
 	switch (m_register_address_latch)
 	{
