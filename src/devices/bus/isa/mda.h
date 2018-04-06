@@ -158,8 +158,8 @@ protected:
 	virtual ioport_constructor device_input_ports() const override;
 
 private:
-	int get_xres();
-	int get_yres();
+	inline int get_xres();
+	inline int get_yres();
 	//virtual DECLARE_WRITE8_MEMBER(mode_control_w) override;
 
 	enum {
@@ -169,7 +169,28 @@ private:
 		VM_MONO   = 0x08,
 		VM_VER400 = 0x10
 	};
-	
+
+	enum {
+		MR1_COLS80 = 0x01,
+		MR1_GRAPH = 0x02,
+		MR1_VIDEO = 0x08,
+		MR1_HOR640 = 0x10,
+		MR1_BLINK = 0x20
+	};
+
+	enum {
+		MR2_COLEMU = 0x04,
+		MR2_CHRSET = 0x40,
+		MR2_VER400 = 0x80
+	};
+
+	enum {
+		ATTR_BLINK = 0x80,
+		ATTR_BACKG = 0x70,
+		ATTR_INTEN = 0x08,
+		ATTR_FOREG = 0x07,
+		ATTR_ULINE = 0x01,
+	};
 	virtual MC6845_UPDATE_ROW( crtc_update_row ) override;
 	//MC6845_UPDATE_ROW( mda_lowres_text_inten_update_row );
 	//MC6845_UPDATE_ROW( mda_lowres_text_blink_update_row );
@@ -180,11 +201,13 @@ private:
 	uint8_t m_mode_control2;
 	required_device<screen_device> m_screen;
 	required_ioport m_io_monitor;
+	required_region_ptr<uint8_t> m_chargen;
 
 	uint8_t m_vmode;
 	rgb_t (*m_pal)[4];
 	rgb_t m_3111_pal[4];
 	rgb_t m_371x_pal[4];
+	bool m_installed;
 };
 
 // device type definition

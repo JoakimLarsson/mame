@@ -30,8 +30,8 @@
 #define LOG_CHRG    (1U << 5)
 #define LOG_STAT    (1U << 6)
 
-#define VERBOSE (LOG_MODE|LOG_STAT)
-#define LOG_OUTPUT_STREAM std::cout
+//#define VERBOSE (LOG_MODE|LOG_SETUP|LOG_ROW)
+//#define LOG_OUTPUT_STREAM std::cout
 
 #include "logmacro.h"
 
@@ -1067,12 +1067,14 @@ MC6845_UPDATE_ROW( isa8_ec1840_0002_device::crtc_update_row )
 
 #define EPC_MDA_SCREEN "epc_mda_screen"
 
+#if 0
 static GFXDECODE_START( pcepc )
 	GFXDECODE_ENTRY( "gfx1", 0x0000, pc_16_charlayout, 1, 1 )
 GFXDECODE_END
+#endif
 
 ROM_START( epc )
-	ROM_REGION(0x2000,"gfx1", 0)
+	ROM_REGION(0x2000,"chargen", 0)
 	ROM_LOAD("8363_65_14-80_CG_50821_A64.BIN",  0x00000, 0x2000, CRC(be709786) SHA1(38ab26224bbe66bbe2bb2ccac29b41cbf78bdbf8))
 //ROM_LOAD("10-40_VP_402_28_IC_24_A19.BIN",  0x00000, 0x2000, CRC(2aa53b92) SHA1(87051a037249eb631d7d2191bc0e925125c60f39))
 ROM_END
@@ -1103,7 +1105,7 @@ MACHINE_CONFIG_START(isa8_epc_mda_device::device_add_mconfig)
 	MCFG_MC6845_OUT_HSYNC_CB(WRITELINE(isa8_mda_device, hsync_changed))
 	MCFG_MC6845_OUT_VSYNC_CB(WRITELINE(isa8_mda_device, vsync_changed))
 
-	MCFG_GFXDECODE_ADD("gfxdecode", "palette", pcepc)
+//MCFG_GFXDECODE_ADD("gfxdecode", "palette", pcepc)
 MACHINE_CONFIG_END
 
 //-------------------------------------------------
@@ -1124,12 +1126,15 @@ const tiny_rom_entry *isa8_epc_mda_device::device_rom_region() const
 //-------------------------------------------------
 
 isa8_epc_mda_device::isa8_epc_mda_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-	isa8_mda_device(mconfig, ISA8_EPC_MDA, tag, owner, clock), m_soft_chr_gen(nullptr)
+	isa8_mda_device(mconfig, ISA8_EPC_MDA, tag, owner, clock)
+	, m_soft_chr_gen(nullptr)
 	, m_s1(*this, "S1")
 	, m_color_mode(0)
 	, m_mode_control2(0)
 	, m_screen(*this, EPC_MDA_SCREEN)
 	, m_io_monitor(*this, "MONITOR")
+	, m_chargen(*this, "chargen")
+	, m_installed(false)
 {
 }
 
@@ -1159,25 +1164,34 @@ void isa8_epc_mda_device::device_start()
 
 	m_videoram.resize(0x8000);
 	set_isa_device();
-	m_isa->install_device(0x3b0, 0x3bf, read8_delegate( FUNC(isa8_epc_mda_device::io_read), this ), write8_delegate( FUNC(isa8_epc_mda_device::io_write), this ) );
-	m_isa->install_device(0x3d0, 0x3df, read8_delegate( FUNC(isa8_epc_mda_device::io_read), this ), write8_delegate( FUNC(isa8_epc_mda_device::io_write), this ) );
-	m_isa->install_bank(0xb0000, 0xb7fff, "bank_epc", &m_videoram[0]); // Monochrome emulation mode VRAM address
-	m_isa->install_bank(0xb8000, 0xbffff, "bank_epc", &m_videoram[0]); // Color emulation mode VRAM address
-#if 0
-	/* Initialise the mda palette */
-	for (int i = 0; i < 4; i++)
-		m_palette->set_pen_color(i, rgb_t(mda_palette[i][0], mda_palette[i][1], mda_palette[i][2]));
-#endif
+	m_installed = false;
 }
 
 void isa8_epc_mda_device::device_reset()
 {
-	isa8_mda_device::device_reset();
+	m_framecnt = 0;
+	m_mode_control = 0;
+	m_vsync = 0;
+	m_hsync = 0;
 
 	m_color_mode = m_s1->read();
 	LOGSETUP("%s: m_color_mode:%02x\n", FUNCNAME, m_color_mode);
 	m_pal = (m_io_monitor-> read() & 1) == 1 ? &m_371x_pal : &m_3111_pal;
 	m_vmode = 0;
+
+	if (m_installed == false)
+	{
+		m_isa->install_device(0x3b0, 0x3bf, read8_delegate( FUNC(isa8_epc_mda_device::io_read), this ), write8_delegate( FUNC(isa8_epc_mda_device::io_write), this ) );
+		m_isa->install_bank(0xb0000, 0xb7fff, "bank_epc", &m_videoram[0]); // Monochrome emulation mode VRAM address
+
+		// This check allows a color monitor adapter to be installed at this address range if color emulation is disabled
+		if (m_color_mode & 1)
+		{
+			m_isa->install_device(0x3d0, 0x3df, read8_delegate( FUNC(isa8_epc_mda_device::io_read), this ), write8_delegate( FUNC(isa8_epc_mda_device::io_write), this ) );
+			m_isa->install_bank(0xb8000, 0xbffff, "bank_epc", &m_videoram[0]); // Color emulation mode VRAM address, but same 32KB areas as there are only this amount on the board
+		}
+		m_installed = true;
+	}
 }
 
 /*
@@ -1198,11 +1212,11 @@ WRITE8_MEMBER( isa8_epc_mda_device::io_write)
 	switch( offset )
 	{
 		case 0x04:
-			LOGSETUP(" - 6845 address write\n");
+		  //LOGSETUP(" - 6845 address write\n");
 			mc6845->address_w( space, offset, data );
 			break;
 		case 0x05:
-			LOGSETUP(" - 6845 register write\n");
+		  //LOGSETUP(" - 6845 register write\n");
 			mc6845->register_w( space, offset, data );
 			break;
 		case 0x08: // Mode 1 reg
@@ -1222,12 +1236,13 @@ WRITE8_MEMBER( isa8_epc_mda_device::io_write)
 				rectangle rect(0, get_xres() - 1, 0, get_yres() -1);
 				m_screen->configure(get_xres(), get_yres(), rect, HZ_TO_ATTOSECONDS(50));
 			}
+			LOGMODE("Video Mode:%02x\n\n", m_vmode);
 			break;
 		case 0x0f: // Mode 2 reg
 			LOGMODE(" - Mode register 2 write: %02x\n", data);
-			LOGMODE("   Vertical px  : %s\n", (data & 0x80) == 0 ? "200" : "400");
-			LOGMODE("   Character set: %s\n", (data & 0x40) == 0 ? "0" : "1");
-			LOGMODE("   Emulated     : %s\n", (data & 0x04) == 0 ? "Color" : "Monochrome");
+			LOGMODE("   Vertical px  : %s\n", (data & MR2_VER400) == 0 ? "200" : "400");
+			LOGMODE("   Character set: %s\n", (data & MR2_CHRSET) == 0 ? "0" : "1");
+			LOGMODE("   Emulated     : %s\n", (data & MR2_COLEMU) == 0 ? "Color" : "Monochrome");
 			m_mode_control2 = data;
 			m_vmode &= ~(VM_MONO | VM_VER400);
 			m_vmode |= ((m_mode_control2 & 0x04) ? VM_MONO   : 0);
@@ -1236,6 +1251,7 @@ WRITE8_MEMBER( isa8_epc_mda_device::io_write)
 				rectangle rect(0, get_xres() - 1, 0, get_yres() -1);
 				m_screen->configure(get_xres(), get_yres(), rect, HZ_TO_ATTOSECONDS(50));
 			}
+			LOGMODE("Video Mode:%02x\n\n", m_vmode);
 			break;
 		default:
 			LOG("EPC MDA: io_write at wrong offset:%02x\n", offset);
@@ -1277,265 +1293,127 @@ READ8_MEMBER( isa8_epc_mda_device::io_read)
 	return data;
 }
 
-
-/***************************************************************************
-  Draw text mode with 80x25 characters (default) and intense background.
-  The character cell size is 8x14.
-
-- Mode register 1 write: 29
-   MSB attribute: blink
-   Horizontal px: 320/LR
-   Video        : Enabled
-   Mode         : Text
-   Text columns : 80
-
- - Mode register 2 write: 00
-   Vertical px  : 200
-   Character set: 0
-   Emulated     : Color
-
-Mode register 1 write: 29
-   MSB attribute: blink
-   Horizontal px: 320/LR
-   Video        : Enabled
-   Mode         : Text
-   Text columns : 80
-
- - Mode register 2 write: 04
-   Vertical px  : 200
-   Character set: 0
-   Emulated     : Monochrome
-
-***************************************************************************/
-#if 0
-MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_inten_update_row )
+inline int isa8_epc_mda_device::get_xres()
 {
-  //const rgb_t *palette = m_palette->palette()->entry_list_raw();
-	uint32_t  *p = &bitmap.pix32(y);
-	uint16_t  chr_base = ra;
-	int i;
-
-	if ( y == 0 ) LOGROW("%11.6f %s\n - y:%d x_count%d\n", machine().time().as_double(), FUNCNAME, y, x_count);
-
-	for ( i = 0; i < x_count; i++ )
-	{
-		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
-		uint8_t chr = m_videoram[ offset ];
-		uint8_t attr = m_videoram[ offset + 1 ];
-		uint8_t data = m_chr_gen[ chr_base + chr * 16];
-		uint8_t fg = ( attr & 0x08 ) ? 3 : 2;
-		uint8_t bg = 0;
-
-		if (y == 0 && i == 0) LOGCHRG(" - Offset: %04x Chr: '%c'[%02x] Attr: %02x Chr_base: %04x\n", offset, chr, chr, attr, chr_base);
-		if ( ( attr & ~0x88 ) == 0 )
-		{
-			data = 0x00;
-		}
-
-		switch( attr )
-		{
-		case 0x70:
-			bg = 2;
-			fg = 0;
-			break;
-		case 0x78:
-			bg = 2;
-			fg = 1;
-			break;
-		case 0xF0:
-			bg = 3;
-			fg = 0;
-			break;
-		case 0xF8:
-			bg = 3;
-			fg = 1;
-			break;
-		}
-
-		if ( ( i == cursor_x && ( m_framecnt & 0x08 ) ) || ( attr & 0x07 ) == 0x01 )
-		{
-			data = 0xFF;
-		}
-
-		*p = palette[( data & 0x80 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x40 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x20 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x10 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x08 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x04 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x02 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x01 ) ? fg : bg]; p++;
-	}
+	return (m_vmode & VM_GRAPH) ? ( (m_vmode & VM_HOR640) ? 640 : 320 ) : 720;
 }
 
-
-/***************************************************************************
-  Draw text mode with 80x25 characters (default) and blinking characters.
-  The character cell size is 9x16, 8x8 or 8x16 depending on mode.
-***************************************************************************/
-
-MC6845_UPDATE_ROW( isa8_epc_mda_device::mda_lowres_text_blink_update_row )
+inline int isa8_epc_mda_device::get_yres()
 {
-  //const rgb_t *palette = m_palette->palette()->entry_list_raw();
-	uint32_t  *p = &bitmap.pix32(y);
-	uint16_t  chr_base = ra;
-	int i;
-
-	if ( y == 0 ) LOGROW("%11.6f %s\n - y:%d x_count%d\n", machine().time().as_double(), FUNCNAME, y, x_count);
-
-	for ( i = 0; i < x_count; i++ )
-	{
-		uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
-		uint8_t chr = m_videoram[ offset ];
-		uint8_t attr = m_videoram[ offset + 1 ];
-		uint8_t data = m_chr_gen[ chr_base + chr * 16];
-		uint8_t fg = ( attr & 0x08 ) ? 3 : 2;
-		uint8_t bg = 0;
-
-		if (y == 0 && i == 0) LOGCHRG(" - Offset: %04x Chr: '%c'[%02x] Attr: %02x Chr_base: %04x\n", offset, chr, chr, attr, chr_base);
-		if ( ( attr & ~0x88 ) == 0 )
-		{
-			data = 0x00;
-		}
-
-		switch( attr )
-		{
-		case 0x70:
-		case 0xF0:
-			bg = 2;
-			fg = 0;
-			break;
-		case 0x78:
-		case 0xF8:
-			bg = 2;
-			fg = 1;
-			break;
-		}
-
-		if ( ( attr & 0x07 ) == 0x01 )
-		{
-			data = 0xFF;
-		}
-
-		if ( i == cursor_x )
-		{
-			if ( m_framecnt & 0x08 )
-			{
-				data = 0xFF;
-			}
-		}
-		else
-		{
-			if ( ( attr & 0x80 ) && ( m_framecnt & 0x10 ) )
-			{
-				data = 0x00;
-			}
-		}
-
-		*p = palette[( data & 0x80 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x40 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x20 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x10 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x08 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x04 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x02 ) ? fg : bg]; p++;
-		*p = palette[( data & 0x01 ) ? fg : bg]; p++;
-	}
-}
-#endif
-
-int isa8_epc_mda_device::get_xres()
-{
-  return 720;
-}
-
-int isa8_epc_mda_device::get_yres()
-{
-  return 400;
+	return (m_vmode & VM_GRAPH) ? ( (m_vmode & VM_VER400) ? 400 : 200 ) : 400;
 }
 
 MC6845_UPDATE_ROW( isa8_epc_mda_device::crtc_update_row )
 {
-
-
-#if 1
-  //const rgb_t *palette = m_palette->palette()->entry_list_raw();
-	uint32_t  *p = &bitmap.pix32(y);
+  	uint32_t  *p = &bitmap.pix32(y);
 	uint16_t  chr_base = ra;
 	int i;
 
-	if ( y == 0 ) LOGROW("%11.6f %s\n - y:%d x_count%d\n", machine().time().as_double(), FUNCNAME, y, x_count);
-
-	if ( (m_mode_control & 0x03) == 0) // 40x25 text mode
+	// Get som debug data from a couple of rows now and then
+	if ( y < (16 * 0 + 0x20) && (m_framecnt & 0xff) == 0 )
 	{
+		LOGROW("%11.6f %s\n - y:%d chr_base:%d ra:%d ma:%d x_count:%d\n", machine().time().as_double(), FUNCNAME,
+		       y, y % 16, ra, ma, x_count);
 	}
-	else // 80x25 text mode
-        {
+
+	// Video Off handling
+	if ((m_mode_control & MR1_VIDEO) == 0)
+	{
+		for (int i = 0; i < get_xres(); i++)
+		{
+			bitmap.pix32(y, i) = rgb_t::black();
+		}
+	}
+
+	// Graphic modes using only pixeldata, soft fonts are 8x8 or 8x16 but this is transparant to the code
+	else if ((m_vmode & VM_GRAPH) != 0)
+	{
+		logerror("EPC MDA: graphic modes not supported yet\n");
+	}
+
+	// Text modes using one of two 9x16 fonts in character rom
+	else
+	{
+		// Adjust row pointer if in monochrome text mode as we insert two scanlines per row of characters (see below)
+		if (m_vmode & VM_MONO)
+		{
+			p = &bitmap.pix32((y / 14) * 16 + y % 14);
+		}
+
+		// Loop over each character in a row
 		for ( i = 0; i < x_count; i++ )
 		{
 			uint16_t offset = ( ( ma + i ) << 1 ) & 0x0FFF;
 			uint8_t chr = m_videoram[ offset ];
 			uint8_t attr = m_videoram[ offset + 1 ];
-			uint8_t data = m_chr_gen[ chr_base + chr * 16];
+			uint8_t data = m_chargen[ ((m_mode_control2 & MR2_CHRSET) ? 0x1000 : 0) + chr_base + chr * 16];
 
 			// Default to light text on dark background
-			uint8_t fg = ( attr & 0x08 ) ? 3 : 2;
+			uint8_t fg = 2;
 			uint8_t bg = 0;
 
 			if (y == 0 && i == 0) LOGCHRG(" - Offset: %04x Chr: '%c'[%02x] Attr: %02x Chr_base: %04x\n", offset, chr, chr, attr, chr_base);
 
-			// Needs fixing
-			if ( (m_mode_control & 0x08) == 0 ||
-			     ((m_mode_control2 & 0x04) != 0 && (attr & 0x77) == 0) )
+			// Prepare some special monochrome emulation cases
+			if ( m_vmode & VM_MONO)
 			{
-				data = 0x00;
+				// Handle invisible characters
+				if ( (attr & (ATTR_FOREG | ATTR_BACKG)) == 0 )
+				{
+					data = 0x00;
+				}
+				// Handle reversed characters
+				else if ( (attr & (ATTR_BACKG)) == ATTR_BACKG )
+				{
+					fg = 0;
+					bg = 2;
+				}
 			}
-			// Check bg & fg special cases
-			switch (attr & 0x77)
+			else // prepare some special color emulation cases
 			{
-			case 0x00: // Dark character on dark background
-				data = 0;
-				break;
-				
-			case 0x70: // Dark character on light background
-				bg = 2;
-				fg = 0;
-				break;
+				// Handle invisible characters
+				if ( (attr & (ATTR_FOREG)) == ((attr & ATTR_BACKG) >> 4))
+				{
+					data = 0x00;
+				}
+				// Handle reversed characters
+				else if ( (attr & ATTR_BACKG) == ATTR_BACKG ||
+					  (attr & ATTR_FOREG) == 0 )
+				{
+					fg = 0;
+					bg = 2;
+				}
 			}
 
-			switch( attr )
-			  {
-			  case 0x70:
-			  case 0xF0:
-			    bg = 2;
-			    fg = 0;
-			    break;
-			  case 0x78:
-			  case 0xF8:
-			    bg = 2;
-			    fg = 1;
-			    break;
-			  }
-			
-			if ( ( attr & 0x07 ) == 0x01 )
-			  {
-			    data = 0xFF;
-			  }
-			
-			if ( i == cursor_x )
-			  {
-			    if ( m_framecnt & 0x08 )
-			      {
-				data = 0xFF;
-			      }
-			  }
+			// Handle intense foreground 
+			if ((attr & ATTR_INTEN) != 0 && fg == 2)
+			{
+				fg = 3;
+			}
+
+			// Handle intense background if blinking is disabled
+			if ((m_mode_control & MR1_BLINK) == 0 &&
+			    (attr & ATTR_BLINK) != 0 && bg == 2)
+			{
+				bg = 3;
+			}
+
+			// Handle cursor and blinks
+			if ( i == (cursor_x))
+			{
+				if ( m_framecnt & 0x08 )
+				{
+					data = 0xFF;
+				}
+			}
 			else
-			  {
-			    if ( ( attr & 0x80 ) && ( m_framecnt & 0x10 ) )
-			      {
-				data = 0x00;
-			      }
-			  }
+			{
+				if ( (m_mode_control & MR1_BLINK) &&
+				     ( attr & ATTR_BLINK ) && ( m_framecnt & 0x10 ) )
+				{
+					data = 0x00;
+				}
+			}
 			
 			*p = (*m_pal)[( data & 0x80 ) ? fg : bg]; p++;
 			*p = (*m_pal)[( data & 0x40 ) ? fg : bg]; p++;
@@ -1545,23 +1423,40 @@ MC6845_UPDATE_ROW( isa8_epc_mda_device::crtc_update_row )
 			*p = (*m_pal)[( data & 0x04 ) ? fg : bg]; p++;
 			*p = (*m_pal)[( data & 0x02 ) ? fg : bg]; p++;
 			*p = (*m_pal)[( data & 0x01 ) ? fg : bg]; p++;
+			if (chr >= 0xc0 && chr <= 0xdf)
+				*p = (*m_pal)[( data & 0x01 ) ? fg : bg]; // 9th pixel col is a copy of col 8
+			else
+				*p = (*m_pal)[bg];                        // 9th pixel col is just background
+			p++;
+
+			// Insert two extra scanlines in monochrome text mode to get 400 lines and support underline, needs verification on actual hardware.
+			// The technical manual says that the character box is 9x16 pixels in 80x25 character mode which equals 720x400 resolution but the
+			// CRTC calls back for only 350 lines. Assumption is that there is hardware adding these lines and that handles underlining. In color
+			// emulation text mode all 400 lines are called for in 80x25 and this mode does not support underlining according to the technical manual
+			if ( ra == 13 && (m_vmode & VM_MONO) )
+			{
+				uint16_t row = ra + (y / 14) * 16; // Calculate correct row number including the extra 2 lines per each row of characters
+				for ( int j = 0; j < 9; j++)
+				{
+					if (chr >= 0xb3 && chr <= 0xdf) // Handle the meta graphics characters
+					{
+						bitmap.pix32(row + 1, j + i * 9) = (*m_pal)[( data & (0x80 >> j) ) || (j == 8 && (data & 0x01)) ? fg : bg];
+						bitmap.pix32(row + 2, j + i * 9) = (*m_pal)[( data & (0x80 >> j) ) || (j == 8 && (data & 0x01)) ? fg : bg];
+					}
+					else
+					{
+						// Handle underline
+						bitmap.pix32(row + 1, j + i * 9) =(*m_pal)[( attr & ATTR_FOREG ) == ATTR_ULINE ? fg : bg];
+						bitmap.pix32(row + 2, j + i * 9) = (*m_pal)[bg];
+					}
+				}
+			}
 		}
 	}
-#else
-	switch (m_update_row_type)
-	{
-		case MDA_LOWRES_TEXT_INTEN:
-			mda_lowres_text_inten_update_row(bitmap, cliprect, ma, ra, y, x_count, cursor_x, de, hbp, vbp);
-			break;
-		case MDA_LOWRES_TEXT_BLINK:
-			mda_lowres_text_blink_update_row(bitmap, cliprect, ma, ra, y, x_count, cursor_x, de, hbp, vbp);
-			break;
-	}
-#endif
 }
 
 //--------------------------------------------------------------------
-//  Port definition - Needs refactoring as becoming ridiculously long
+//  Port definitions
 //--------------------------------------------------------------------
 static INPUT_PORTS_START( epc_mda )
 	PORT_START("S1")
