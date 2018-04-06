@@ -452,8 +452,8 @@ located at I/O port 0x3CE, and a data register located at I/O port 0x3CF.
 #define LOG_SETUP   (1U << 2)
 #define LOG_MODE    (1U << 3)
 
-#define VERBOSE (LOG_GENERAL | LOG_SETUP | LOG_MODE)
-#define LOG_OUTPUT_STREAM std::cout
+//#define VERBOSE (LOG_GENERAL | LOG_SETUP | LOG_MODE)
+//#define LOG_OUTPUT_STREAM std::cout
 
 #include "logmacro.h"
 
