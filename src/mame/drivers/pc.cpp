@@ -287,13 +287,14 @@ Form Factor: Desktop
 CPU: 8088 @ 4.77MHz
 RAM: 256K
 Bus: 6x ISA
-Video: Monchrome or Color 80x25 character mode. 320x200 and 640x400 (CGA?) grahics modes
+Video: Monchrome or Color 40/80x25 text mode. 320x200 - 640x400 grahics modes
 Display: Orange Gas Plasma (GP) display
 Mass storage: 2 x 5.25" 360K or 1 20Mb HDD
 On board ports: Beeper,
 Ports: serial, parallel
 Internal Options: Up to 640K RAM through add-on RAM card
-Misc: The hardware was not 100% PC compatible so non BIOS based software would not run. 50.000+ units sold
+Misc: The EPC hardware is not 100% PC compatible so non BIOS based software would not run. 50.000+ units sold. The keyboard 
+is serial based on a 6801 and connects to a 8251 which has it's data read replacing the traditional 8255 data read on 0x60.
 
 Ericsson Portable PC - EPPC
 ===========================
@@ -352,6 +353,7 @@ Misc: A Kaypro 16/2 is a configuration without harddisk but with two floppy disk
 #include "bus/isa/isa.h"
 #include "bus/isa/isa_cards.h"
 #include "bus/pc_kbd/keyboards.h"
+#include "bus/rs232/rs232.h"
 #include "softlist.h"
 
 class pc_state : public driver_device
@@ -445,7 +447,10 @@ ADDRESS_MAP_END
 ADDRESS_MAP_START(pc_state::epc_io)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x00ff) AM_DEVICE("mb", ibm5160_mb_device, map)
-	AM_RANGE(0x0070, 0x0070) AM_DEVREADWRITE("i8251", i8251_device, data_r, data_w)
+	// Serial keyboard controller
+	AM_RANGE(0x0060, 0x0060) AM_DEVREAD("i8251", i8251_device, data_r) // purposely overlays the data_r of the standard 8255
+	//AM_RANGE(0x0070, 0x0070) AM_DEVREADWRITE("i8251", i8251_device, data_r, data_w)
+	AM_RANGE(0x0070, 0x0070) AM_DEVWRITE("i8251", i8251_device, data_w)
 	AM_RANGE(0x0071, 0x0071) AM_DEVREADWRITE("i8251", i8251_device, status_r, control_w)
 ADDRESS_MAP_END
 
@@ -560,13 +565,40 @@ MACHINE_CONFIG_DERIVED(pc_state::dgone, pccga)
 	MCFG_SLOT_OPTION_MACHINE_CONFIG("fdc_xt", cfg_dual_720K)
 MACHINE_CONFIG_END
 
+#define EPC_KBD_TAG "keyboard"
+
 // Ericsson Information System
+// Three crystals identified on PCB:
+// X1: 14.3181 / 3 - standard PC crystal
+// X2: 18.4320 - serial and keyboard clock
+// X3: 16.0000
+// Advanced ICs:
+// U3: Intel P8088
+// U4: empty - probably 8087
+// U8: INS8250N - UART serial controller
+// U25: Intel P8259A - Interrupt Controller
+// U32: NEC D765A -  FDC controller
+// U36: Intel P8253-5 - Timer
+// U38: Intel P8237A-5 - DMA controller
+// U58: Intel P8251A - USART - non standard serial controller supporting also synchronous modes
+// U59: AMD P8255A-5 - Paralell port
+// U73/U72: Mitsubishi M2L2764K Eprom
+// U56/U57: Mitsubishi M2L2764K Eprom
 MACHINE_CONFIG_DERIVED(pc_state::epc, pccga)
 	MCFG_DEVICE_REMOVE("maincpu")
-	MCFG_CPU_PC(pc8, epc, I8088, 4772720)
+	MCFG_CPU_PC(pc8, epc, I8088, XTAL(14'318'181) / 3)
+
 	MCFG_DEVICE_MODIFY("isa1")
 	MCFG_SLOT_DEFAULT_OPTION("epc_mda")
-	MCFG_DEVICE_ADD("i8251", I8251, 0) // clock?
+
+	MCFG_DEVICE_ADD("i8251", I8251, XTAL(16'000'000) / 8) // clock?
+	MCFG_I8251_TXD_HANDLER(DEVWRITELINE(EPC_KBD_TAG, rs232_port_device, write_txd))
+	MCFG_I8251_DTR_HANDLER(DEVWRITELINE(EPC_KBD_TAG, rs232_port_device, write_dtr))
+	MCFG_I8251_RTS_HANDLER(DEVWRITELINE(EPC_KBD_TAG, rs232_port_device, write_rts))
+
+	MCFG_RS232_PORT_ADD(EPC_KBD_TAG, default_rs232_devices, "terminal")
+	MCFG_RS232_RXD_HANDLER(DEVWRITELINE("i8251", i8251_device, write_rxd))
+	MCFG_RS232_DSR_HANDLER(DEVWRITELINE("i8251", i8251_device, write_dsr))
 MACHINE_CONFIG_END
 
 MACHINE_CONFIG_DERIVED(pc_state::eppc, pccga)
