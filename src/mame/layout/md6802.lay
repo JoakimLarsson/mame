@@ -28,230 +28,98 @@ Didact MD6802 layout
 	<element name="text_7"><text string="7 SP   " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_8"><text string="8 SST  " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_9"><text string="9 USERV" align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_A"><text string="A MOV  "><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_B"><text string="B USERJ"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_C"><text string="C CON  "><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_D"><text string="D      "><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_E"><text string="E LOAD "><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_F"><text string="F FLAG "><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_terminal"><text string="Terminal"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_md6802"><text string="Mikrodator 6802"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_md6802_kb"><text string="Mikrodator 6802 (TB) Tangentbord"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="pcb_color"> <rect><color red="0.43" green="0.47" blue="0.45" /></rect></element>
-	<element name="white"> <rect><color red="1.0" green="1.0" blue="1.0" /></rect></element>
-	<element name="black"> <rect><color red="0.0" green="0.0" blue="0.0" /></rect></element>
 	<element name="text_10"><text string="A MOV  " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_11"><text string="B USERJ" align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_12"><text string="C CON  " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_13"><text string="D      " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_14"><text string="E LOAD " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_15"><text string="F FLAG " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-
-	<group name="original">
-		<bounds left="0" top="0" right="800" bottom="869"/>
-
-		<bezel element="text_md6802"><bounds x="150" y="200" width="150" height="20" /></bezel>
-
-		<bezel name="led1" element="redled">
-			<bounds x="290" y="668" width="15" height="15"/>
-		</bezel>
-
-		<bezel name="digit0" element="digit">
-			<bounds x="170" y="410" width="78" height="85" />
-		</bezel>
-		<bezel name="digit1" element="digit">
-			<bounds x="250" y="410" width="78" height="85" />
-		</bezel>
-		<bezel name="digit2" element="digit">
-			<bounds x="330" y="410" width="78" height="85" />
-		</bezel>
-		<bezel name="digit3" element="digit">
-			<bounds x="410" y="410" width="78" height="85" />
-		</bezel>
-		<bezel name="digit4" element="digit">
-			<bounds x="490" y="410" width="78" height="85" />
-		</bezel>
-		<bezel name="digit5" element="digit">
-			<bounds x="570" y="410" width="78" height="85" />
-		</bezel>
-
-		<!-- Buttons -->
-		<!-- Row 0 : C D E F -->
-		<bezel element="button" inputtag="LINE3" inputmask="0x01">
-			<bounds x="345" y="555" width="70" height="60" />
-		</bezel>
-		<bezel element="text_C"><bounds x="355" y="535" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE3" inputmask="0x02">
-			<bounds x="425" y="555" width="70" height="60" />
-		</bezel>
-		<bezel element="text_D"><bounds x="435" y="535" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE3" inputmask="0x04">
-			<bounds x="505" y="555" width="70" height="60" />
-		</bezel>
-		<bezel element="text_E"><bounds x="515" y="535" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE3" inputmask="0x08">
-			<bounds x="585" y="555" width="70" height="60" />
-		</bezel>
-		<bezel element="text_F"><bounds x="595" y="535" width="50" height="20" /></bezel>
-
-		<!-- Buttons -->
-		<!-- Row 1 : 8 9 A B -->
-		<bezel element="button" inputtag="LINE2" inputmask="0x01">
-			<bounds x="345" y="635" width="70" height="60" />
-		</bezel>
-		<bezel element="text_8"><bounds x="355" y="615" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE2" inputmask="0x02">
-			<bounds x="425" y="635" width="70" height="60" />
-		</bezel>
-		<bezel element="text_9"><bounds x="435" y="615" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE2" inputmask="0x04">
-			<bounds x="505" y="635" width="70" height="60" />
-		</bezel>
-		<bezel element="text_A"><bounds x="515" y="615" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE2" inputmask="0x08">
-			<bounds x="585" y="635" width="70" height="60" />
-		</bezel>
-		<bezel element="text_B"><bounds x="595" y="615" width="50" height="20" /></bezel>
-
-		<!-- Buttons -->
-		<!-- Row 2 : SHIFT 4 5 6 7 -->
-		<bezel element="button" inputtag="LINE4" inputmask="0x08">
-			<bounds x="265" y="715" width="70" height="60" />
-		</bezel>
-		<bezel element="text_shift"><bounds x="275" y="695" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE1" inputmask="0x01">
-			<bounds x="345" y="715" width="70" height="60" />
-		</bezel>
-		<bezel element="text_4"><bounds x="355" y="695" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE1" inputmask="0x02">
-			<bounds x="425" y="715" width="70" height="60" />
-		</bezel>
-		<bezel element="text_5"><bounds x="435" y="695" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE1" inputmask="0x04">
-			<bounds x="505" y="715" width="70" height="60" />
-		</bezel>
-		<bezel element="text_6"><bounds x="515" y="695" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE1" inputmask="0x08">
-			<bounds x="585" y="715" width="70" height="60" />
-		</bezel>
-		<bezel element="text_7"><bounds x="595" y="695" width="50" height="20" /></bezel>
-
-		<!-- Buttons -->
-		<!-- Row 3 : RESET 0 1 2 3 -->
-		<bezel element="button" inputtag="LINE4" inputmask="0x04">
-			<bounds x="265" y="795" width="70" height="60" />
-		</bezel>
-		<bezel element="text_reset"><bounds x="275" y="775" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE0" inputmask="0x01">
-			<bounds x="345" y="795" width="70" height="60" />
-		</bezel>
-		<bezel element="text_0"><bounds x="355" y="775" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE0" inputmask="0x02">
-			<bounds x="425" y="795" width="70" height="60" />
-		</bezel>
-		<bezel element="text_1"><bounds x="435" y="775" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE0" inputmask="0x04">
-			<bounds x="505" y="795" width="70" height="60" />
-		</bezel>
-		<bezel element="text_2"><bounds x="515" y="775" width="50" height="20" /></bezel>
-
-		<bezel element="button" inputtag="LINE0" inputmask="0x08">
-			<bounds x="585" y="795" width="70" height="60" />
-		</bezel>
-		<bezel element="text_3"><bounds x="595" y="775" width="50" height="20" /></bezel>
-	      </group>
+	<element name="text_md6802_kb"><text string="Mikrodator 6802 (TB) Tangentbord"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="pcb_color"> <rect><color red="0.43" green="0.47" blue="0.45" /></rect></element>
+	<element name="white"> <rect><color red="1.0" green="1.0" blue="1.0" /></rect></element>
+	<element name="black"> <rect><color red="0.0" green="0.0" blue="0.0" /></rect></element>
+	<element name="text_terminal"><text string="Terminal"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	      
-	      <group name="digit">
-		<bezel name="digit~dno~" element="digit">
-		  <bounds x="~x~" y="~y~" width="188" height="276" />
-		</bezel>
-	      </group>
+	<group name="digit">
+	  <bezel name="digit~dno~" element="digit">
+	    <bounds x="~x~" y="~y~" width="188" height="276" />
+	  </bezel>
+	</group>
+	
+	<element name="keycap">
+	  <disk><bounds x="0" y="0" width="100" height="100" /><color red="0.0" green="0.0" blue="0.0" /></disk>
+	  <disk><bounds x="3" y="3" width="94" height="94" /><color red="0.2" green="0.2" blue="0.2" /></disk>
+	  <disk state="0"><bounds x="10" y="10" width="80" height="80" /><color red="0.1" green="0.1" blue="0.1" /></disk>
+	  <disk state="1"><bounds x="10" y="10" width="80" height="80" /><color red="0.2" green="0.2" blue="0.2" /></disk>
+	</element>
+	
+	<group name="key">
+	  <bezel element="keycap" inputtag="LINE~line~" inputmask="~mask~">
+	    <bounds x="~x~" y="~y~" width="22" height="22" />
+	  </bezel>
+	  <bezel element="text_~bname~">
+	    <bounds x="~xt~" y="~yt~" width="28" height="7" />
+	  </bezel>
+	</group>
+	
+	<group name="keyboard">
+	  <backdrop element="pcb_color"><bounds left="0" top="0" right="290" bottom="326"/></backdrop>
+	  <bezel element="text_md6802_kb"><bounds x="20" y="10" width="112" height="8" /></bezel>
 
-	      <element name="keycap">
-		<disk><bounds x="0" y="0" width="100" height="100" /><color red="0.0" green="0.0" blue="0.0" /></disk>
-		<disk><bounds x="3" y="3" width="94" height="94" /><color red="0.2" green="0.2" blue="0.2" /></disk>
-		<disk><bounds x="10" y="10" width="80" height="80" /><color red="0.1" green="0.1" blue="0.1" /></disk>
-	      </element>
-	      
-	      <group name="key">
-		<bezel element="keycap" inputtag="LINE~line~" inputmask="~mask~">
-		  <bounds x="~x~" y="~y~" width="22" height="22" />
-		</bezel>
-		<bezel element="text_~bname~">
-		  <bounds x="~xt~" y="~yt~" width="28" height="7" />
-		</bezel>
-	      </group>
+	  <!-- BCD 7seg display -->
+	  <!-- AAAADD -->
+	  <repeat count="6">
+	    <param name="dno" start="0" increment="1" />
+	    <param name="x" start="30" increment="38" />
+	    <param name="xi" start="32" increment="38" />
+	    <param name="xd" start="33" increment="38" />
+	    <bezel element="white"><bounds x="~x~" y="112" width="39" height="44" /></bezel>
+	    <bezel element="pcb_color"><bounds x="~xi~" y="114" width="36" height="40" /></bezel>
+	    <bezel element="black"><bounds x="~xd~" y="116" width="34" height="38" /></bezel>
+	    <bezel name="digit~dno~" element="digit"><bounds x="~xd~" y="117" width="31" height="36" /></bezel>
+	  </repeat>
+	  
+	  <!-- Key pad -->
+	  <repeat count="4">
+	    <param name="bname" start="0" increment="4" />
+	    <param name="line" start="0" increment="1" />
+	    <param name="y" start="295" increment="-30" />
+	    <param name="yt" start="287" increment="-30" />
+	    <repeat count="4">
+	      <param name="bname" start="~bname~" increment="1" />
+	      <param name="mask" start="1" lshift="1" />
+	      <param name="x" start="115" increment="30" />
+	      <param name="xt" start="120" increment="30" />
+	      <group ref="key"/>
+	    </repeat>
+	  </repeat>
 
-	      <group name="keyboard">
-		<backdrop element="pcb_color"><bounds left="0" top="0" right="290" bottom="326"/></backdrop>
-		<bezel element="text_md6802_kb"><bounds x="20" y="10" width="112" height="8" /></bezel>
-		
-		<bezel name="led1" element="redled"><bounds x="85" y="236" width="12" height="12"/></bezel>
+	  <!-- RESET button -->
+	  <param name="line"  value="4" />
+	  <param name="mask"  value="0x04" />
+	  <param name="y"     value="295" />
+	  <param name="yt"    value="287" />
+	  <param name="x"     value="85" />
+	  <param name="xt"    value="90" />
+	  <param name="line"  value="4" />
+	  <param name="bname" value="reset" />
+	  <group ref="key" />
 
-		<!-- BCD 7seg display -->
-		<!-- AAAADD -->
-		<repeat count="6">
-		  <param name="dno" start="0" increment="1" />
-		  <param name="x" start="30" increment="38" />
-		  <param name="xi" start="32" increment="38" />
-		  <param name="xd" start="33" increment="38" />
-		  <bezel element="white"><bounds x="~x~" y="112" width="39" height="44" /></bezel>
-		  <bezel element="pcb_color"><bounds x="~xi~" y="114" width="36" height="40" /></bezel>
-		  <bezel element="black"><bounds x="~xd~" y="116" width="34" height="38" /></bezel>
-		  <bezel name="digit~dno~" element="digit"><bounds x="~xd~" y="117" width="31" height="36" /></bezel>
-		</repeat>
-		
-		<!-- Key pad -->
-		<repeat count="4">
-		  <param name="bname" start="0" increment="4" />
-		  <param name="line" start="0" increment="1" />
-		  <param name="y" start="295" increment="-30" />
-		  <param name="yt" start="287" increment="-30" />
-		  <repeat count="4">
-		    <param name="bname" start="~bname~" increment="1" />
-		    <param name="mask" start="1" lshift="1" />
-		    <param name="x" start="115" increment="30" />
-		    <param name="xt" start="120" increment="30" />
-		    <group ref="key"/>
-		  </repeat>
-		</repeat>
-		<!-- RESET button -->
-		<param name="line"  value="4" />
-		<param name="mask"  value="0x04" />
-		<param name="y"     value="295" />
-		<param name="yt"    value="287" />
-		<param name="x"     value="85" />
-		<param name="xt"    value="90" />
-		<param name="line"  value="4" />
-		<param name="bname" value="reset" />
-		<group ref="key" />
-		<!-- SHIFT button -->
-		<param name="mask"  value="0x08" />
-		<param name="y"     value="265" />
-		<param name="yt"    value="257" />
-		<param name="x"     value="85" />
-		<param name="xt"    value="90" />
-		<param name="line"  value="4" />
-		<param name="bname" value="shift" />
-		<group ref="key" />
-	      </group>
+	  <!-- SHIFT key led -->
+	  <bezel name="led1" element="redled"><bounds x="92" y="245" width="10" height="10"/></bezel>
+	  
+	  <!-- SHIFT button -->
+	  <param name="mask"  value="0x08" />
+	  <param name="y"     value="265" />
+	  <param name="yt"    value="257" />
+	  <param name="x"     value="85" />
+	  <param name="xt"    value="90" />
+	  <param name="line"  value="4" />
+	  <param name="bname" value="shift" />
+	  <group ref="key" />
+	</group>
 
-	      <view name="Base Artwork">
-		<!--group ref="original"><bounds left="0" top="0" right="800" bottom="869"/></group-->
-		<group ref="keyboard"><bounds left="0" top="0" right="800" bottom="900"/></group>
-	      </view>
-	      
+	<view name="Base Artwork">
+	  <group ref="keyboard"><bounds left="0" top="0" right="800" bottom="900"/></group>
+	</view>      
 </mamelayout>
