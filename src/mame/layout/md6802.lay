@@ -35,11 +35,61 @@ Didact MD6802 layout
 	<element name="text_14"><text string="E LOAD " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_15"><text string="F FLAG " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_md6802_kb"><text string="Mikrodator 6802 (TB) Tangentbord"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_122"><text string="'122"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_145"><text string="'145"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_244"><text string="'244"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="pcb_color"> <rect><color red="0.43" green="0.47" blue="0.45" /></rect></element>
 	<element name="white"> <rect><color red="1.0" green="1.0" blue="1.0" /></rect></element>
 	<element name="black"> <rect><color red="0.0" green="0.0" blue="0.0" /></rect></element>
+	<element name="silver"> <rect><color red="0.75" green="0.75" blue="0.75" /></rect></element>
+	<element name="brown"> <rect><color red="0.18" green="0.08" blue="0.03" /></rect></element>
 	<element name="text_terminal"><text string="Terminal"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	      
+	<element name="mount">
+	  <disk><bounds x="0" y="0" width="100" height="100" /><color red="0.64" green="0.64" blue="0.64" /></disk>
+	  <disk><bounds x="22" y="22" width="56" height="56" /><color red="0.54" green="0.54" blue="0.54" /></disk>
+	  <disk><bounds x="30" y="30" width="40" height="40" /><color red="0.0" green="0.0" blue="0.0" /></disk>
+	</element>
+
+	<element name="screwhead">
+	  <disk><bounds x="0" y="0" width="100" height="100" /><color red="0" green="0" blue="0" /></disk>
+	  <disk><bounds x="2" y="2" width="96"  height="96" /> <color red="0.1" green="0.1" blue="0.1" /></disk>
+	  <disk><bounds x="5" y="5" width="90"  height="90" /> <color red="0.2" green="0.2" blue="0.2" /></disk>
+	</element>
+
+	<element name="hole">
+	  <disk><bounds x="0" y="0" width="100" height="100" /><color red="0" green="0" blue="0" /></disk>
+	</element>
+
+	<group name="screw">
+	  <bezel element="screwhead"><bounds x="0" y="0" width="100" height="100" /></bezel>
+	  <repeat count="~c~">
+	    <param name="xl" start="~x~" increment="~xi~" />
+	    <param name="yl" start="~y~" increment="~yi~" />
+	    <bezel element="hole"><bounds x="~xl~" y="~yl~" width="8" height="8" /></bezel>
+	  </repeat>
+	</group>
+
+	<group name="vdip">
+	  <bezel element="black"><bounds x="20" y="10" width="80" height="~h~" /></bezel>
+	  <bezel element="~t~"><bounds x="30" y="30" width="60" height="30" /></bezel>	  
+	  <repeat count="~c~">
+	    <param name="y" start="15" increment="35" />
+	    <bezel element="silver"><bounds x="10" y="~y~" width="10" height="25" /></bezel>
+	    <bezel element="silver"><bounds x="100" y="~y~" width="10" height="25" /></bezel>
+	  </repeat>
+	</group>
+	
+	<group name="hdip">
+	  <bezel element="black"><bounds x="10" y="20" width="~w~" height="~h~" /></bezel>
+	  <bezel element="~t~"><bounds x="30" y="30" width="60" height="30" /></bezel>	  
+	  <repeat count="~c~">
+	    <param name="x" start="15" increment="35" />
+	    <bezel element="silver"><bounds y="10" x="~x~" width="25" height="10" /></bezel>
+	    <bezel element="silver"><bounds y="~b~" x="~x~" width="25" height="10" /></bezel>
+	  </repeat>
+	</group>
+	
 	<group name="digit">
 	  <bezel name="digit~dno~" element="digit">
 	    <bounds x="~x~" y="~y~" width="188" height="276" />
@@ -117,6 +167,43 @@ Didact MD6802 layout
 	  <param name="line"  value="4" />
 	  <param name="bname" value="shift" />
 	  <group ref="key" />
+
+	  <!-- screws -->
+	  <param name="x"  value="15" />
+	  <param name="xi" value="1" />
+	  <param name="y"  value="15" />
+	  <param name="yi" value="1" />
+	  <param name="c" value="60" />
+	  <group ref="screw"><bounds x="4"   y="4"   width="16" height="16" /></group>
+	  <param name="x"  value="75" />
+	  <param name="xi" value="-1" />
+	  <group ref="screw"><bounds x="270" y="4"   width="16" height="16" /></group>
+	  <param name="c" value="90" />
+	  <param name="y"  value="2" />
+	  <param name="x"  value="45" />
+	  <param name="xi" value="0" />
+	  <group ref="screw"><bounds x="270" y="290" width="16" height="16" /></group>
+	  <param name="y"  value="45" />
+	  <param name="x"  value="2" />
+	  <param name="xi" value="1" />
+	  <param name="yi" value="0" />
+	  <group ref="screw"><bounds x="4"   y="290" width="16" height="16" /></group>
+
+	  <!-- scattered ICs -->
+	  <param name="c" value="8"/>
+	  <param name="h" value="280"/>
+	  <param name="t" value="text_145"/>
+	  <group ref="vdip"><bounds x="44" y="176" width="25" height="50" /></group>
+	  <param name="c" value="7"/>
+	  <param name="h" value="80"/>
+	  <param name="w" value="240"/>
+	  <param name="b" value="100"/>
+	  <param name="t" value="text_122"/>
+	  <group ref="hdip"><bounds x="45" y="70" width="50" height="25" /></group>	  
+	  <param name="c" value="10"/>
+	  <param name="w" value="343"/>
+	  <param name="t" value="text_244"/>
+	  <group ref="hdip"><bounds x="97" y="59" width="65" height="25" /></group>	  
 	</group>
 
 	<view name="Base Artwork">
