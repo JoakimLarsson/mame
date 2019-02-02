@@ -71,22 +71,22 @@ Didact MD6802 layout
 	</group>
 
 	<group name="vdip">
-	  <bezel element="black"><bounds x="20" y="10" width="80" height="~h~" /></bezel>
-	  <bezel element="~t~"><bounds x="30" y="30" width="60" height="30" /></bezel>	  
+	  <bezel element="black"><bounds x="20" y="10" width="70" height="~h~" /></bezel>
+	  <bezel element="~t~"><bounds x="20" y="30" width="70" height="40" /></bezel>	  
 	  <repeat count="~c~">
 	    <param name="y" start="15" increment="35" />
 	    <bezel element="silver"><bounds x="10" y="~y~" width="10" height="25" /></bezel>
-	    <bezel element="silver"><bounds x="100" y="~y~" width="10" height="25" /></bezel>
+	    <bezel element="silver"><bounds x="90" y="~y~" width="10" height="25" /></bezel>
 	  </repeat>
 	</group>
 	
 	<group name="hdip">
-	  <bezel element="black"><bounds x="10" y="20" width="~w~" height="~h~" /></bezel>
+	  <bezel element="black"><bounds x="10" y="20" width="~w~" height="70" /></bezel>
 	  <bezel element="~t~"><bounds x="30" y="30" width="60" height="30" /></bezel>	  
 	  <repeat count="~c~">
 	    <param name="x" start="15" increment="35" />
 	    <bezel element="silver"><bounds y="10" x="~x~" width="25" height="10" /></bezel>
-	    <bezel element="silver"><bounds y="~b~" x="~x~" width="25" height="10" /></bezel>
+	    <bezel element="silver"><bounds y="90" x="~x~" width="25" height="10" /></bezel>
 	  </repeat>
 	</group>
 	
@@ -195,9 +195,7 @@ Didact MD6802 layout
 	  <param name="t" value="text_145"/>
 	  <group ref="vdip"><bounds x="44" y="176" width="25" height="50" /></group>
 	  <param name="c" value="7"/>
-	  <param name="h" value="80"/>
 	  <param name="w" value="240"/>
-	  <param name="b" value="100"/>
 	  <param name="t" value="text_122"/>
 	  <group ref="hdip"><bounds x="45" y="70" width="50" height="25" /></group>	  
 	  <param name="c" value="10"/>
