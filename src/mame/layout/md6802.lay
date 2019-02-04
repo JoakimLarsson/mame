@@ -35,11 +35,19 @@ Didact MD6802 layout
 	<element name="text_14"><text string="E LOAD " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_15"><text string="F FLAG " align="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_md6802_kb"><text string="Mikrodator 6802 (TB) Tangentbord"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_md6802_cpu"><text string="Mikrodator 6802 (CPU)"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_122"><text string="SN74LS122N"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_132"><text string="SN74LS132N"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_138"><text string="SN74LS138N"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_145"><text string="SN74145N"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_244"><text string="SN74LS244N"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_6802"><text string="CPU MC6802P"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_2716"><text string="M5L2716K"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_6116"><text string="HM6116P"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_6821"><text string="MC6821P"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="pcb_color"> <rect><color red="0.43" green="0.47" blue="0.45" /></rect></element>
 	<element name="white"> <rect><color red="1.0" green="1.0" blue="1.0" /></rect></element>
+	<element name="gray"> <rect><color red="0.5" green="0.5" blue="0.5" /></rect></element>
 	<element name="black"> <rect><color red="0.0" green="0.0" blue="0.0" /></rect></element>
 	<element name="silver"> <rect><color red="0.75" green="0.75" blue="0.75" /></rect></element>
 	<element name="brown"> <rect><color red="0.18" green="0.08" blue="0.03" /></rect></element>
@@ -70,13 +78,14 @@ Didact MD6802 layout
 	</group>
 
 	<group name="dip">
-	  <bezel element="black"><bounds x="10" y="20" width="~w~" height="70" /></bezel>
-	  <bezel element="~t~"><bounds x="30" y="35" width="150" height="30" /></bezel>	  
 	  <repeat count="~c~">
+	    <param name="xb" start="8" increment="35" />
 	    <param name="x" start="15" increment="35" />
+	    <bezel element="black"><bounds y="20" x="~xb~" width="37" height="70" /></bezel>
 	    <bezel element="silver"><bounds y="10" x="~x~" width="25" height="10" /></bezel>
 	    <bezel element="silver"><bounds y="90" x="~x~" width="25" height="10" /></bezel>
 	  </repeat>
+	  <bezel element="~t~"><bounds x="30" y="35" width="~tw~" height="~th~" /></bezel>	  
 	</group>
 
 	<group name="vdip">
@@ -117,8 +126,11 @@ Didact MD6802 layout
 	  <bezel element="white"><bounds x="540" y="700" width="8320" height="240" /></bezel>
 	  <repeat count="3">
 	    <param name="y" start="220" increment="254" />
+	    <param name="yh" start="200" increment="254" />
 	    <repeat count="32">
 	      <param name="x" start="620" increment="254" />
+	      <param name="xh" start="582" increment="254" />
+	      <bezel element="gray"><bounds x="~xh~" y="~yh~" width="125" height="90" /></bezel> 
 	      <bezel element="black"><bounds x="~x~" y="~y~" width="60" height="50" /></bezel> 
 	    </repeat>
 	  </repeat>
@@ -127,10 +139,11 @@ Didact MD6802 layout
 	</group>
 	
 	<group name="keyboard">
-	  <backdrop element="pcb_color"><bounds left="0" top="0" right="288" bottom="324"/></backdrop>
+	  <backdrop element="pcb_color"><bounds left="0" top="0" right="289" bottom="327"/></backdrop>
 	  <bezel element="text_md6802_kb"><bounds x="20" y="10" width="112" height="8" /></bezel>
+	  <bezel element="text_terminal"><bounds x="10" y="208" width="26" height="6" /></bezel>
 
-	  <group ref="eurofem"><bounds x="20" y="28" width="238" height="27"/></group>
+	  <group ref="eurofem"><bounds x="23" y="32" width="228" height="24"/></group>
 
 	  <!-- BCD 7seg display -->
 	  <!-- AAAADD -->
@@ -207,22 +220,24 @@ Didact MD6802 layout
 
 	  <!-- scattered ICs -->
 	  <param name="c" value="8"/>
-	  <param name="w" value="280"/>
 	  <param name="t" value="text_145"/>
-	  <group ref="vdip"><bounds x="44" y="176" width="25" height="50" /></group>
+	  <param name="tw" value="150"/>
+	  <param name="th" value="30"/>
+	  <group ref="vdip"><bounds x="44" y="176" width="20" height="50" /></group>
 	  <param name="c" value="7"/>
-	  <param name="w" value="240"/>
 	  <param name="t" value="text_122"/>
-	  <group ref="hdip"><bounds x="45" y="70" width="50" height="25" /></group>	  
+	  <group ref="hdip"><bounds x="45" y="70" width="44" height="20" /></group>	  
 	  <param name="c" value="10"/>
-	  <param name="w" value="343"/>
 	  <param name="t" value="text_244"/>
-	  <group ref="hdip"><bounds x="97" y="59" width="65" height="25" /></group>	  
+	  <group ref="hdip"><bounds x="97" y="59" width="65" height="20" /></group>	  
 	</group>
 
 	<group name="cpuboard">
-	  <backdrop element="pcb_color"><bounds left="0" top="0" right="389" bottom="242"/></backdrop>
-	  <group ref="eurofem"><bounds x="267" y="12" height="230" width="26" /><orientation rotate="90" /></group>
+	  <backdrop element="pcb_color"><bounds left="0" top="0" right="390" bottom="242"/></backdrop>
+	  <bezel element="text_md6802_cpu"><bounds x="25" y="22" width="8" height="75" /><orientation rotate="90" /></bezel>
+	  
+	  <group ref="eurofem"><bounds x="267" y="12" height="228" width="24" /><orientation rotate="90" /></group>
+
 	  <!-- screws -->
 	  <param name="x"  value="15" />
 	  <param name="xi" value="1" />
@@ -242,7 +257,30 @@ Didact MD6802 layout
 	  <param name="x"  value="2" />
 	  <param name="xi" value="1" />
 	  <param name="yi" value="0" />
-	  <group ref="screw"><bounds x="4"   y="222" width="16" height="16" /></group>	  
+	  <group ref="screw"><bounds x="4"   y="222" width="16" height="16" /></group>
+	  <!-- scattered ICs -->
+	  <param name="c" value="7"/>
+	  <param name="t" value="text_132"/>
+	  <param name="tw" value="170"/>
+	  <param name="th" value="30"/>
+	  <group ref="hdip"><bounds x="37" y="193" width="44" height="20" /></group>
+	  <param name="c" value="8"/>
+	  <param name="t" value="text_138"/>
+	  <group ref="hdip"><bounds x="167" y="20" width="50" height="20" /></group>	  
+	  <param name="tw" value="300"/>
+	  <param name="c" value="20"/>
+	  <param name="t" value="text_6802"/><!-- CPU -->
+	  <group ref="vdip"><bounds x="39" y="47" width="42" height="125" /></group>	  
+	  <param name="t" value="text_6821"/><!-- PIA -->
+	  <group ref="vdip"><bounds x="218" y="84" width="42" height="125" /></group>	  
+	  <group ref="vdip"><bounds x="312" y="84" width="42" height="125" /></group>	  
+	  <param name="c" value="12"/>
+	  <param name="t" value="text_2716"/><!-- ROM -->
+	  <group ref="vdip"><bounds x="104" y="69" width="42" height="77" /></group>	  
+	  <param name="c" value="12"/>
+	  <param name="t" value="text_6116"/><!-- RAM -->
+	  <group ref="vdip"><bounds x="158" y="69" width="42" height="77" /></group>	  
+	  
 	</group>
 
 	<view name="Base Artwork">
