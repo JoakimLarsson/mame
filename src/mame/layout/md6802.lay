@@ -45,7 +45,8 @@ Didact MD6802 layout
 	<element name="text_2716"><text string="M5L2716K"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_6116"><text string="HM6116P"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_6821"><text string="MC6821P"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="pcb_color"> <rect><color red="0.43" green="0.47" blue="0.45" /></rect></element>
+	<element name="pcb_color"> <rect><color red="0.22" green="0.26" blue="0.24" /></rect></element>
+	<element name="bb_color"> <rect><color red="0.71" green="0.63" blue="0.46" /></rect></element>
 	<element name="white"> <rect><color red="1.0" green="1.0" blue="1.0" /></rect></element>
 	<element name="gray"> <rect><color red="0.5" green="0.5" blue="0.5" /></rect></element>
 	<element name="black"> <rect><color red="0.0" green="0.0" blue="0.0" /></rect></element>
@@ -77,15 +78,53 @@ Didact MD6802 layout
 	  </repeat>
 	</group>
 
-	<group name="dip">
-	  <repeat count="~c~">
-	    <param name="xb" start="8" increment="35" />
-	    <param name="x" start="15" increment="35" />
-	    <bezel element="black"><bounds y="20" x="~xb~" width="37" height="70" /></bezel>
-	    <bezel element="silver"><bounds y="10" x="~x~" width="25" height="10" /></bezel>
-	    <bezel element="silver"><bounds y="90" x="~x~" width="25" height="10" /></bezel>
+	<group name="pinpair">
+	    <bezel element="silver"><bounds x="29" y="0" width="50" height="100" /></bezel>
+	    <bezel element="black"> <bounds x="0" y="10" width="108" height="80" /></bezel>
+	</group>
+	  
+	<group name="dip7">
+	  <repeat count="7">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
 	  </repeat>
-	  <bezel element="~t~"><bounds x="30" y="35" width="~tw~" height="~th~" /></bezel>	  
+	</group>
+
+	<group name="dip8">
+	  <repeat count="8">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
+	  </repeat>
+	</group>
+
+	<group name="dip10">
+	  <repeat count="10">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
+	  </repeat>
+	</group>
+
+	<group name="dip12">
+	  <repeat count="12">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
+	  </repeat>
+	</group>
+
+	<group name="dip20">
+	  <repeat count="20">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
+	  </repeat>
+	</group>
+
+	<group name="dip">
+	  <repeat count="~pp~">
+	    <param name="x" start="0" increment="100" />
+	    <param name="xp" start="28" increment="100" />
+	    <bezel element="silver"><bounds x="~xp~" y="0" width="50" height="100" /></bezel>
+	    <bezel element="black"> <bounds x="~x~" y="10" width="106" height="80" /></bezel>
+	  </repeat>
 	</group>
 
 	<group name="vdip">
@@ -128,8 +167,8 @@ Didact MD6802 layout
 	    <param name="y" start="220" increment="254" />
 	    <param name="yh" start="200" increment="254" />
 	    <repeat count="32">
-	      <param name="x" start="620" increment="254" />
-	      <param name="xh" start="582" increment="254" />
+	      <param name="x" start="740" increment="254" />
+	      <param name="xh" start="702" increment="254" />
 	      <bezel element="gray"><bounds x="~xh~" y="~yh~" width="125" height="90" /></bezel> 
 	      <bezel element="black"><bounds x="~x~" y="~y~" width="60" height="50" /></bezel> 
 	    </repeat>
@@ -219,17 +258,15 @@ Didact MD6802 layout
 	  <group ref="screw"><bounds x="4"   y="290" width="16" height="16" /></group>
 
 	  <!-- scattered ICs -->
-	  <param name="c" value="8"/>
-	  <param name="t" value="text_145"/>
-	  <param name="tw" value="150"/>
-	  <param name="th" value="30"/>
-	  <group ref="vdip"><bounds x="44" y="176" width="20" height="50" /></group>
-	  <param name="c" value="7"/>
-	  <param name="t" value="text_122"/>
-	  <group ref="hdip"><bounds x="45" y="70" width="44" height="20" /></group>	  
-	  <param name="c" value="10"/>
-	  <param name="t" value="text_244"/>
-	  <group ref="hdip"><bounds x="97" y="59" width="65" height="20" /></group>	  
+	  <group ref="dip7">         <bounds x="45"  y="70"  width="44" height="20" /></group>
+	  <bezel element="text_122"> <bounds x="51"  y="74"  width="25" height="7" /></bezel>
+
+	  <group ref="dip8">         <bounds x="44"  y="176" width="20" height="50" /><orientation rotate="90" /></group>
+	  <bezel element="text_145"> <bounds x="50"  y="180" width="7" height="25" /><orientation rotate="90" /></bezel>
+
+	  <group ref="dip10">        <bounds x="97"  y="59" width="65" height="20" /></group>
+	  <bezel element="text_145"> <bounds x="103" y="63" width="25" height="7" /></bezel>
+
 	</group>
 
 	<group name="cpuboard">
@@ -258,34 +295,86 @@ Didact MD6802 layout
 	  <param name="xi" value="1" />
 	  <param name="yi" value="0" />
 	  <group ref="screw"><bounds x="4"   y="222" width="16" height="16" /></group>
+
 	  <!-- scattered ICs -->
-	  <param name="c" value="7"/>
-	  <param name="t" value="text_132"/>
-	  <param name="tw" value="170"/>
-	  <param name="th" value="30"/>
-	  <group ref="hdip"><bounds x="37" y="193" width="44" height="20" /></group>
-	  <param name="c" value="8"/>
-	  <param name="t" value="text_138"/>
-	  <group ref="hdip"><bounds x="167" y="20" width="50" height="20" /></group>	  
-	  <param name="tw" value="300"/>
-	  <param name="c" value="20"/>
-	  <param name="t" value="text_6802"/><!-- CPU -->
-	  <group ref="vdip"><bounds x="39" y="47" width="42" height="125" /></group>	  
-	  <param name="t" value="text_6821"/><!-- PIA -->
-	  <group ref="vdip"><bounds x="218" y="84" width="42" height="125" /></group>	  
-	  <group ref="vdip"><bounds x="312" y="84" width="42" height="125" /></group>	  
-	  <param name="c" value="12"/>
-	  <param name="t" value="text_2716"/><!-- ROM -->
-	  <group ref="vdip"><bounds x="104" y="69" width="42" height="77" /></group>	  
-	  <param name="c" value="12"/>
-	  <param name="t" value="text_6116"/><!-- RAM -->
-	  <group ref="vdip"><bounds x="158" y="69" width="42" height="77" /></group>	  
+	  <group ref="dip7">         <bounds x="37"  y="193" width="44" height="20" /></group>
+	  <bezel element="text_132"> <bounds x="43"  y="197" width="25" height="7" /></bezel>
+
+	  <group ref="dip8">         <bounds x="167" y="20"  width="50" height="20" /></group>
+	  <bezel element="text_138"> <bounds x="173" y="24"  width="25" height="7" /></bezel>
 	  
+	  <!-- CPU -->
+	  <group ref="dip20">        <bounds x="39" y="47" width="40" height="125" /><orientation rotate="90" /></group>
+	  <bezel element="text_6802"><bounds x="50" y="53" width="15" height="52" /><orientation rotate="90" /></bezel>
+	  <!-- PIAs -->
+	  <group ref="dip20">        <bounds x="218" y="84" width="40" height="125" /><orientation rotate="90" /></group>
+	  <bezel element="text_6821"><bounds x="229" y="90" width="15" height="48" /><orientation rotate="90" /></bezel>
+	  <group ref="dip20">        <bounds x="312" y="84" width="40" height="125" /><orientation rotate="90" /></group>
+	  <bezel element="text_6821"><bounds x="323" y="90" width="15" height="48" /><orientation rotate="90" /></bezel>
+	  <!-- ROM -->
+	  <group ref="dip12"><bounds x="104" y="69" width="40" height="77" /><orientation rotate="90" /></group>
+	  <bezel element="text_2716"><bounds x="115" y="75" width="17" height="35" /><orientation rotate="90" /></bezel>
+	  <!-- RAM -->
+	  <group ref="dip12"><bounds x="158" y="69" width="40" height="77" /><orientation rotate="90" /></group>
+	  <bezel element="text_6116"><bounds x="169" y="75" width="17" height="35" /><orientation rotate="90" /></bezel>
 	</group>
 
-	<view name="Base Artwork">
-	  
-	  <group ref="keyboard"><bounds x="0" y="0" width="400" height="450" /></group>
-	  <group ref="cpuboard"><bounds x="411" y="61" width="540" height="338" /></group>
+	<group name="breadboard">
+	  <backdrop element="bb_color"><bounds left="0" top="0" right="1300" bottom="3720"/></backdrop>
+	  <repeat count="47">
+	    <param name="y" start="400" increment="62" />
+	    <param name="yh" start="405" increment="62" />
+	    <repeat count="5">
+	      <param name="x" start="330" increment="62" />
+	      <param name="xh" start="335" increment="62" />
+	      <bezel element="gray"><bounds x="~x~" y="~y~" width="40" height="40" /></bezel> 
+	      <bezel element="black"><bounds x="~xh~" y="~yh~" width="30" height="30" /></bezel> 
+	    </repeat>
+	    <repeat count="5">
+	      <param name="x" start="740" increment="62" />
+	      <param name="xh" start="745" increment="62" />
+	      <bezel element="gray"><bounds x="~x~" y="~y~" width="40" height="40" /></bezel> 
+	      <bezel element="black"><bounds x="~xh~" y="~yh~" width="30" height="30" /></bezel> 
+	    </repeat>
+	  </repeat>
+	  <repeat count="8">
+	    <param name="y" start="400" increment="372" />
+	    <param name="yh" start="405" increment="372" />
+	    <repeat count="5">
+	      <param name="y" start="~y~" increment="62" />
+	      <param name="yh" start="~yh~" increment="62" />
+	      <bezel element="gray"><bounds x="180" y="~y~" width="40" height="40" /></bezel> 
+	      <bezel element="black"><bounds x="185" y="~yh~" width="30" height="30" /></bezel> 
+	      <bezel element="gray"><bounds x="1100" y="~y~" width="40" height="40" /></bezel> 
+	      <bezel element="black"><bounds x="1105" y="~yh~" width="30" height="30" /></bezel> 
+	    </repeat>
+	  </repeat>
+	  <!-- screws -->
+	  <param name="x"  value="15" />
+	  <param name="xi" value="1" />
+	  <param name="y"  value="15" />
+	  <param name="yi" value="1" />
+	  <param name="c" value="60" />
+	  <group ref="screw"><bounds x="180" y="130"   width="160" height="160" /></group>
+	  <param name="x"  value="75" />
+	  <param name="xi" value="-1" />
+	  <group ref="screw"><bounds x="990" y="130"   width="160" height="160" /></group>
+	  <param name="c" value="90" />
+	  <param name="y"  value="2" />
+	  <param name="x"  value="45" />
+	  <param name="xi" value="0" />
+	  <group ref="screw"><bounds x="990" y="3420" width="160" height="160" /></group>
+	  <param name="y"  value="45" />
+	  <param name="x"  value="2" />
+	  <param name="xi" value="1" />
+	  <param name="yi" value="0" />
+	  <group ref="screw"><bounds x="180"   y="3420" width="160" height="160" /></group>
+	</group>
+
+	<view name="Base Artwork">	  
+	  <backdrop element="black"><bounds left="0" top="0" right="1211" bottom="551"/></backdrop>
+	  <group ref="keyboard"><bounds x="0" y="31" width="400" height="450" /></group>
+	  <group ref="cpuboard"><bounds x="405" y="92" width="540" height="338" /></group>
+	  <group ref="breadboard"><bounds x="951" y="0" width="191" height="551" /></group>
 	</view>      
 </mamelayout>
