@@ -32,6 +32,7 @@ Esselte Studium Modulab layout
 	<element name="text_data"><text string="DATA"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="pcb_blue"> <rect><color red="0.0" green="0.0" blue="0.49" /></rect></element>
 	<element name="silver"> <rect><color red="0.75" green="0.75" blue="0.75" /></rect></element>
+	<element name="white"> <rect><color red="1.0" green="1.0" blue="1.0" /></rect></element>
 	<element name="black"> <rect><color red="0.0" green="0.0" blue="0.0" /></rect></element>
 	<element name="brown"> <rect><color red="0.18" green="0.08" blue="0.03" /></rect></element>
 	<element name="text_164"><text string="'164"><color red="0.7" green="0.7" blue="0.7" /></text></element>
@@ -415,6 +416,14 @@ Esselte Studium Modulab layout
 	    <group ref="screw"><bounds x="1170" y="630"  width="75" height="75" /></group>
 	  </group>
 
+	  <group name="ledsandbuttons">
+	    <!-- max size -->
+	    <bezel element="pcb_blue"><bounds x="0" y="0" width="1" height="1" /></bezel>
+	    <bezel element="pcb_blue"><bounds x="1000" y="500" width="1" height="1" /></bezel>
+	    <!-- leds -->
+	    <bezel element="white"><bounds x="0" y="0" width="1000" height="500" /></bezel>
+	  </group>
+
 	  <view name="Base Artwork">
 	    <group ref="pcb"><bounds x="0" y="0" width="800" height="600" /></group>
 	    <group ref="hood"><bounds x="0" y="0" width="800" height="600"/> <color alpha="0.2" /></group>
@@ -423,6 +432,9 @@ Esselte Studium Modulab layout
 	  
 	  <view name="Leds and Buttons Artwork">
 	    <group ref="pcb"><bounds x="0" y="0" width="800" height="600" /></group>
+	    <group ref="hood"><bounds x="0" y="0" width="800" height="600"/> <color alpha="0.2" /></group>
+	    <group ref="screws"><bounds x="0" y="0" width="800" height="600"/></group>
+	    <group ref="ledsandbuttons"><bounds x="0" y="0" width="342" height="126" /><color alpha="0.8" /></group>
 	    <!-- group ref="hood"><bounds x="0" y="0" width="800" height="600"/> <color alpha="0.2" /></group>
 	    <group ref="screws"><bounds x="0" y="0" width="800" height="600"/></group -->
 	  </view>
