@@ -1308,6 +1308,18 @@ end
 
 ---------------------------------------------------
 --
+--@src/devices/bus/modulab/parallel/parallel.h,BUSES["MODULAB_PARALLEL"] = true
+---------------------------------------------------
+
+if (BUSES["MODULAB_PARALLEL"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/bus/modulab/parallel/parallel.cpp",
+		MAME_DIR .. "src/devices/bus/modulab/parallel/parallel.h",
+	}
+end
+
+---------------------------------------------------
+--
 --@src/devices/bus/msx_slot/slot.h,BUSES["MSX_SLOT"] = true
 ---------------------------------------------------
 

@@ -2,7 +2,7 @@
 // copyright-holders:Joakim Larsson Edstrom
 /*-==============================================-
  *
- *   Modulab lab ports
+ *   Modulab lab pins
  *
  *   The Modulab board has 2 eight bit port pins directly connected to the INS8154 through breadboard wires
  *   In addition there are GND, VCC and an IRQ pin scattered over the board as well as two pins marked R of
@@ -10,7 +10,7 @@
  *   See didact.cpp for additional info.
  *
  *   The Modulab CPU board, by Didact/Esselte ca 1984
- *  __________________________________________________________________________________________ 
+ *  __________________________________________________________________________________________
  * |                                                    ADRESS               DATA             |
  * |              PORT A                      +-_--++-_--++-_--++-_--+   +-_--++-_--+   VCC   |
  * |    o   o   o   o   o   o   o   o         || | ||| | ||| | ||| | |   || | ||| | |    O    |
@@ -51,7 +51,7 @@
 #ifndef MAME_BUS_MODULAB_PARALLEL_H
 #define MAME_BUS_MODULAB_PARALLEL_H
 
-#PRAGMA once
+#pragma once
 
 class device_modulab_parallel_interface;
 
@@ -59,25 +59,30 @@ class modulab_parallel_slot_device : public device_t, public device_slot_interfa
 {
 public:
   modulab_parallel_slot_device(machine_config const &mconfig, char const *tag, device_t *owner)
-    : modulab_paralell_slot_device(mconfig, tag, owner, (uint32_t)0)
-    {
+	: modulab_parallel_slot_device(mconfig, tag, owner, (uint32_t)0)
+	{
 		option_reset();
 		set_default_option(nullptr);
 		set_fixed(false);
-    }
-    modulab_parallel_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	}
+	modulab_parallel_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	virtual ~modulab_parallel_slot_device();
 
-    DECLARE_READ8_MEMBER(porta_r);
-    DECLARE_WRITE8_MEMBER(porta_w);
-    DECLARE_READ8_MEMBER(portb_r);
-    DECLARE_WRITE8_MEMBER(portb_w);
+	DECLARE_READ8_MEMBER(porta_r);
+	DECLARE_WRITE8_MEMBER(porta_w);
+	DECLARE_READ8_MEMBER(portb_r);
+	DECLARE_WRITE8_MEMBER(portb_w);
  private:
-    device_modulab_parallel_interface *m_dev;
+	// overrides
+	virtual void device_start() override;
+	virtual void device_reset() override;
+	device_modulab_parallel_interface *m_dev;
 };
 
 class device_modulab_parallel_interface : public device_slot_card_interface
 {
  public:
+  virtual ~device_modulab_parallel_interface();
   virtual uint8_t porta_r() { return 0xff; } // Should reflect unloaded port pins
   virtual void porta_w(uint8_t data) { }
   virtual uint8_t portb_r() { return 0xff; } // Should reflect unloaded port pins
@@ -85,7 +90,10 @@ class device_modulab_parallel_interface : public device_slot_card_interface
  protected:
   device_modulab_parallel_interface(const machine_config &mconfig, device_t &device);
 
-  modulab_paralell_slot_device *m_slot;
-}
+  modulab_parallel_slot_device *m_slot;
+};
+
+// device type
+DECLARE_DEVICE_TYPE(MODULAB_PARALLEL_SLOT, modulab_parallel_slot_device)
 
 #endif // MAME_BUS_MODULAB_PARALLEL_H

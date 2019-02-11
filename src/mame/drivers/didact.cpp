@@ -25,17 +25,17 @@
  *  TODO:
  *  Didact designs:    mp68a, md6802, Modulab
  * ------------------------------------------
- *  - Add PCB layouts   OK     OK     OK     
- *  - Dump ROM:s,       OK     OK     OK     
- *  - Keyboard          OK     OK     OK     
- *  - Display/CRT       OK     OK     OK     
+ *  - Add PCB layouts   OK     OK     OK
+ *  - Dump ROM:s,       OK     OK     OK
+ *  - Keyboard          OK     OK     OK
+ *  - Display/CRT       OK     OK     OK
  *  - Clickable Artwork RQ     RQ     OK
  *  - Sound             NA     NA
- *  - Cassette i/f                      
+ *  - Cassette i/f
  *  - Expansion bus
  *  - Expansion overlay
- *  - Interrupts        OK              
- *  - Serial                   XX       
+ *  - Interrupts        OK
+ *  - Serial                   XX
  *   XX = needs debug
  *********************************************/
 
@@ -51,7 +51,8 @@
 // Features
 #include "imagedev/cassette.h"
 #include "bus/rs232/rs232.h"
-#include "screen.h"
+#include "bus/modulab/parallel/parallel.h"
+//#include "screen.h"
 
 // Generated artwork includes
 #include "mp68a.lh"
@@ -370,7 +371,7 @@ INPUT_CHANGED_MEMBER(didact_state::trigger_shift)
 		LOGKBD("SHIFT is pressed\n");
 		m_shift = 1;
 		m_led[0] = 1;
-	} 
+	}
 }
 
 READ8_MEMBER( mp68a_state::pia2_kbA_r )
@@ -488,7 +489,7 @@ void mp68a_state::mp68a_map(address_map &map)
 //===================
 
 /*   The Modulab CPU board, by Didact/Esselte ca 1984
- *  __________________________________________________________________________________________ 
+ *  __________________________________________________________________________________________
  * |                                                    ADRESS               DATA             |
  * |              PORT A                      +-_--++-_--++-_--++-_--+   +-_--++-_--+   VCC   |
  * |    o   o   o   o   o   o   o   o         || | ||| | ||| | ||| | |   || | ||| | |    O    |
@@ -561,12 +562,12 @@ private:
 	};
 
 	// Simple emulation of 6 cascaded 74164 that drives the AAAADD BCD display elements, right to left
-        class shift8
+		class shift8
 	{
 	public:
 	  shift8(){ byte = 0; }
 	  void shiftIn(uint8_t in){ byte = ((byte << 1) & 0xfe) | (in & 1 ? 1 : 0); };
-	  uint8_t byte; 
+	  uint8_t byte;
 	};
 	shift8 m_74164[6];
 
@@ -609,13 +610,13 @@ WRITE8_MEMBER(modulab_state::io_w)
 		// Update the BCD elements with a data bit b shifted in right to left, CS is used as clock for all 164's
 		for (int i = 0; i < 6; i++)
 		{
-	  		uint8_t c = (m_74164[i].byte & 0x80) ? 1 : 0; // Bit 7 is connected to the next BCD right to left
+			uint8_t c = (m_74164[i].byte & 0x80) ? 1 : 0; // Bit 7 is connected to the next BCD right to left
 			m_74164[i].shiftIn(b);
 			m_7segs[i] = ~m_74164[i].byte & 0x7f;  // Bit 0 to 6 drives the 7 seg display
-			b = c; // bit 7 prior shift will be shifted in next (simultaneous in real life) 
+			b = c; // bit 7 prior shift will be shifted in next (simultaneous in real life)
 		}
 		LOGDISPLAY("Shifted: %02x %02x %02x %02x %02x %02x\n",
-			   ~m_74164[0].byte & 0x7f, ~m_74164[1].byte & 0x7f, ~m_74164[2].byte & 0x7f, 
+			   ~m_74164[0].byte & 0x7f, ~m_74164[1].byte & 0x7f, ~m_74164[2].byte & 0x7f,
 			   ~m_74164[3].byte & 0x7f, ~m_74164[4].byte & 0x7f, ~m_74164[5].byte & 0x7f);
 		break;
 	default:
@@ -626,7 +627,7 @@ WRITE8_MEMBER(modulab_state::io_w)
 void modulab_state::machine_reset()
 {
 	LOG("--->%s()\n", FUNCNAME);
-	
+
 	m_maincpu->reset();
 }
 
@@ -790,11 +791,16 @@ void modulab_state::modulab(machine_config &config)
 	m_kb->x2_rd_callback().set_ioport("LINE1");
 	m_kb->x3_rd_callback().set_ioport("LINE2");
 	m_kb->x4_rd_callback().set_ioport("LINE3");
-	
-	/* PIA #1 0x????-0x??? -  */
+
+	/* PIA */
 	INS8154(config, m_pia1);
-	//m_ins8154->in_a().set(FUNC(modulab_state::ins8154_pa_r));
-	//m_ins8154->out_a().set(FUNC(modulab_state::ins8154_pa_w));
+	m_pia1->in_a().set("lab", FUNC(modulab_parallel_slot_device::porta_r));
+	m_pia1->out_a().set("lab", FUNC(modulab_parallel_slot_device::porta_w));
+	m_pia1->in_b().set("lab", FUNC(modulab_parallel_slot_device::portb_r));
+	m_pia1->out_b().set("lab", FUNC(modulab_parallel_slot_device::portb_w));
+
+	// Laboration pins
+	MODULAB_PARALLEL_SLOT(config, "lab");
 
 	//RS232_PORT(config, m_rs232, default_rs232_devices, nullptr);
 }
@@ -892,10 +898,10 @@ ROM_START( modulab )
 
 	ROM_SYSTEM_BIOS(0, "modulabv1", "Modulab Version 1")
 	ROMX_LOAD( "mlab1_00.bin", 0x0000, 0x0800, NO_DUMP, ROM_BIOS(0) )
-	
+
 	ROM_SYSTEM_BIOS(1, "modulabv2", "Modulab Version 2")
 	ROMX_LOAD( "mlab2_00.bin", 0x0000, 0x0800, NO_DUMP, ROM_BIOS(1) )
-	
+
 	ROM_SYSTEM_BIOS(2, "modulabvl", "Modulab Prototype")
 	ROMX_LOAD( "modulab_levererad.bin", 0x0000, 0x0800, CRC(40774ef4) SHA1(9cf188342993fbcff13dbbecc62d1ee49010d6f4), ROM_BIOS(2) )
 ROM_END
