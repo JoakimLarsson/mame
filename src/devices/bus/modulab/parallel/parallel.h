@@ -53,6 +53,8 @@
 
 #pragma once
 
+#include "labs.h"
+
 class device_modulab_parallel_interface;
 
 class modulab_parallel_slot_device : public device_t, public device_slot_interface
@@ -62,6 +64,7 @@ public:
 	: modulab_parallel_slot_device(mconfig, tag, owner, (uint32_t)0)
 	{
 		option_reset();
+		modulab_parallel_slot_labs(*this);
 		set_default_option(nullptr);
 		set_fixed(false);
 	}

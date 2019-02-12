@@ -1315,6 +1315,10 @@ if (BUSES["MODULAB_PARALLEL"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/bus/modulab/parallel/parallel.cpp",
 		MAME_DIR .. "src/devices/bus/modulab/parallel/parallel.h",
+		MAME_DIR .. "src/devices/bus/modulab/parallel/cassette.cpp",
+		MAME_DIR .. "src/devices/bus/modulab/parallel/cassette.h",
+		MAME_DIR .. "src/devices/bus/modulab/parallel/labs.cpp",
+		MAME_DIR .. "src/devices/bus/modulab/parallel/labs.h",
 	}
 end
 
