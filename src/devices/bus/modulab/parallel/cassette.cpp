@@ -11,6 +11,10 @@
 #include "cassette.h"
 #include "imagedev/cassette.h"
 
+//#define VERBOSE (LOG_GENERAL)
+//#define LOG_OUTPUT_FUNC printf
+#include "logmacro.h"
+
 DEFINE_DEVICE_TYPE(MODULAB_CASSETTE, modulab_cassette_device, "mlcass", "Modulab cassette board")
 
 //****************
@@ -32,9 +36,9 @@ void modulab_cassette_device::device_add_mconfig(machine_config &config)
          * or use F2/Shift F2 for PLAY/PAUSE In order to use a wav file it has first to be created
 	 * using TAB and select the 'File manager' Once created it may be given on the commandline
 	 * or mounted via TAB and select Modulab v2 supports cassette through two monitor routines
-	 * while v1 lacks cassette support To use teh routines first store 16 bits start address at 
-	 * $F9F2 and stop address at $F9F4 Press 'ADS' twice and then 'A' for PLAY (load cassette)
-	 * or 'B' for REC (store cassette)
+	 * while v1 lacks cassette support To use the routines first store 16 bits start address at 
+	 * $F9F2 and stop address at $F9F4 Press 'ADS' twice and then 'A' for PLAY (record on cassette)
+	 * or 'B' for REC (play from cassette). 
 	 */
 	CASSETTE(config, m_cassette);
 	m_cassette->set_default_state(CASSETTE_STOPPED | CASSETTE_SPEAKER_MUTED | CASSETTE_MOTOR_ENABLED);
@@ -55,4 +59,5 @@ void modulab_cassette_device::portb_w(uint8_t data)
 {
 	// Cassette
 	m_cassette->output(data & CASS_OUT ? 1.0 : -1.0);
+	LOG("write cassette level: %02x\n", data );
 }
