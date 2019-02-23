@@ -29,11 +29,12 @@
  *  - Dump ROM:s,       OK     OK     OK
  *  - Keyboard          OK     OK     OK
  *  - Display/CRT       OK     OK     OK
- *  - Clickable Artwork RQ     RQ     OK
- *  - Sound             NA     NA
- *  - Cassette i/f
+ *  - Clickable Artwork OK     OK     OK
+ *  - Cassette i/f                    XX
  *  - Expansion bus
- *  - Expansion overlay
+ *  - Expansion view
+ *  - Lab port                        OK
+ *  - Lab view
  *  - Interrupts        OK
  *  - Serial                   XX
  *   XX = needs debug
@@ -537,6 +538,8 @@ class modulab_state : public didact_state
 		, m_7segs(*this, "digit%u", 0U)
 		, m_pia1(*this, PIA1_TAG)
 		, m_kb(*this, MM74C923_TAG)
+		, m_lab1(*this, "lab1")
+		, m_lab2(*this, "lab2")
 		, m_da(0)
 	{ }
 
@@ -551,6 +554,10 @@ protected:
 	DECLARE_READ8_MEMBER( io_r );
 	DECLARE_WRITE8_MEMBER( io_w );
 	DECLARE_WRITE_LINE_MEMBER( da_w );
+	DECLARE_READ8_MEMBER(porta_r);
+	DECLARE_WRITE8_MEMBER(porta_w);
+	DECLARE_READ8_MEMBER(portb_r);
+	DECLARE_WRITE8_MEMBER(portb_w);
 private:
 	void modulab_map(address_map &map);
 	// Offsets for display and keyboard i/o
@@ -562,7 +569,7 @@ private:
 	};
 
 	// Simple emulation of 6 cascaded 74164 that drives the AAAADD BCD display elements, right to left
-		class shift8
+	class shift8
 	{
 	public:
 	  shift8(){ byte = 0; }
@@ -573,8 +580,33 @@ private:
 
 	required_device<ins8154_device> m_pia1;
 	required_device<mm74c922_device> m_kb;
+  	required_device<modulab_parallel_slot_device> m_lab1;
+  	required_device<modulab_parallel_slot_device> m_lab2;
 	uint8_t m_da;
 };
+
+void update_leds(uint16_t leds)
+{
+  for (int i = 0; i < 16; i++)
+  {
+    Do some stufff....
+  }
+}
+
+READ8_MEMBER(modulab_state::porta_r){return 0xff;}
+READ8_MEMBER(modulab_state::portb_r){return 0xff;}
+WRITE8_MEMBER(modulab_state::porta_w)
+{
+	m_lab1->porta_w(space, offset, data, 0xff);
+	m_lab2->porta_w(space, offset, data, 0xff);
+	update_leds((m_lab1->leds_r() & 0x3f) | ((m_lab2->leds_r() & 0x3f) << 6));
+}
+WRITE8_MEMBER(modulab_state::portb_w)
+{
+	m_lab1->portb_w(space, offset, data, 0xff);
+	m_lab2->portb_w(space, offset, data, 0xff);
+	update_leds(m_lab1->leds_r() | m_lab2->leds_r());
+}
 
 WRITE_LINE_MEMBER( modulab_state::da_w )
 {
@@ -794,13 +826,21 @@ void modulab_state::modulab(machine_config &config)
 
 	/* PIA */
 	INS8154(config, m_pia1);
+#if 0
 	m_pia1->in_a().set("lab", FUNC(modulab_parallel_slot_device::porta_r));
 	m_pia1->out_a().set("lab", FUNC(modulab_parallel_slot_device::porta_w));
 	m_pia1->in_b().set("lab", FUNC(modulab_parallel_slot_device::portb_r));
 	m_pia1->out_b().set("lab", FUNC(modulab_parallel_slot_device::portb_w));
+#else
+	m_pia1->in_a().set(FUNC(modulab_state::porta_r));
+	m_pia1->out_a().set(FUNC(modulab_state::porta_w));
+	m_pia1->in_b().set(FUNC(modulab_state::portb_r));
+	m_pia1->out_b().set(FUNC(modulab_state::portb_w));
+#endif
 
 	// Laboration pins
-	MODULAB_PARALLEL_SLOT(config, "lab");
+	MODULAB_PARALLEL_SLOT(config, "lab1");
+	MODULAB_PARALLEL_SLOT(config, "lab2");
 
 	//RS232_PORT(config, m_rs232, default_rs232_devices, nullptr);
 }

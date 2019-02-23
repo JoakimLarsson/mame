@@ -5,6 +5,10 @@ copyright-holders:Joakim Larsson Edstrom
 Esselte Studium Modulab layout
 -->
 <mamelayout version="2">
+	<element name="redled" defstate="0">
+		<disk state="0"><color red="0.3" green="0.0" blue="0.0" /></disk>
+		<disk state="1"><color red="1.0" green="0.0" blue="0.0" /></disk>
+	</element>
 	<element name="text_0"><text string="0"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_1"><text string="1"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_2"><text string="2"><color red="0.7" green="0.7" blue="0.7" /></text></element>
@@ -422,6 +426,11 @@ Esselte Studium Modulab layout
 	    <bezel element="pcb_blue"><bounds x="1000" y="500" width="1" height="1" /></bezel>
 	    <!-- leds -->
 	    <bezel element="white"><bounds x="0" y="0" width="1000" height="500" /></bezel>
+	    <repeat count="6">
+	      <param name="x" start="200" increment="100" />
+	      <param name="nb" start="0" increment="1" />
+	      <bezel name="LED ~nb~" element="redled"><bounds x="~x~" y="250" width="15" height="15" /></bezel>
+	    </repeat>
 	  </group>
 
 	  <view name="Base Artwork">

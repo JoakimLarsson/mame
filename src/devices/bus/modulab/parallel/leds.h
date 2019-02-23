@@ -2,7 +2,8 @@
 // copyright-holders:Joakim Larsson Edstrom
 /*-===============================================================================================================-
  *
- * Modulab cassette interface, design by Per-Ola Svensson 1985-03-21
+ * Modulab leds board
+ *
  *
  * Pin B7 is connected to the cassette recorder input via simple circuit:
  *
@@ -31,36 +32,45 @@
  *
  *-===============================================================================================================-*/
 
-#ifndef MAME_BUS_MODULAB_CASSETTE_H
-#define MAME_BUS_MODULAB_CASSETTE_H
+#ifndef MAME_BUS_MODULAB_LEDS_H
+#define MAME_BUS_MODULAB_LEDS_H
 
 #pragma once
 
 #include "parallel.h"
-#include "imagedev/cassette.h"
 
 //**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
 
-class modulab_cassette_device:
+class modulab_leds_device:
 	public device_t,
 	public device_modulab_parallel_interface
 {
 public:
 	// construction/destruction
-	modulab_cassette_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	modulab_leds_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
 	virtual void device_start() override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual uint8_t portb_r() override;
+	virtual ioport_constructor device_input_ports() const override;
+	virtual void porta_w(uint8_t data) override;
 	virtual void portb_w(uint8_t data) override;
-
-	optional_device<cassette_image_device> m_cassette;
+	void update_leds();
+	DECLARE_READ8_MEMBER(leds_r);	
+	//output_finder<6> m_leds;
+#if 1
+	required_ioport m_leda;
+	required_ioport m_ledb;
+	required_ioport m_ledc;
+	required_ioport m_ledd;
+	required_ioport m_lede;
+	required_ioport m_ledf;
+#endif
+	uint16_t m_bits;
 };
 
 // device type definition
-DECLARE_DEVICE_TYPE(MODULAB_CASSETTE, modulab_cassette_device)
+DECLARE_DEVICE_TYPE(MODULAB_LEDS, modulab_leds_device)
 
-#endif // MAME_BUS_MODULAB_CASSETTE_H
+#endif // MAME_BUS_MODULAB_LEDS_H
