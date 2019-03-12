@@ -30,6 +30,8 @@ Esselte Studium Modulab layout
 	<element name="text_fwd"><text string="FWD"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_cb"><text string="C/B"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_rst"><text string="RST"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_re"><text string="RE"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_set"><text string="SET"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_esselte"><text string="ESSELTE"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_studium"><text string="STUDIUM"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_adress"><text string="ADRESS"><color red="0.7" green="0.7" blue="0.7" /></text></element>
@@ -39,12 +41,12 @@ Esselte Studium Modulab layout
 	<element name="white"> <rect><color red="1.0" green="1.0" blue="1.0" /></rect></element>
 	<element name="black"> <rect><color red="0.0" green="0.0" blue="0.0" /></rect></element>
 	<element name="brown"> <rect><color red="0.18" green="0.08" blue="0.03" /></rect></element>
-	<element name="text_164"><text string="'164"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_ls14"><text string="'14"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_138"><text string="'138"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_123"><text string="'123"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_367"><text string="'367"><color red="0.7" green="0.7" blue="0.7" /></text></element>
-	<element name="text_923"><text string="C923"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_164"><text string="GD74LS164"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_ls14"><text string="GD74LS14"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_138"><text string="SN74LS138"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_123"><text string="GD74LS123"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_367"><text string="SN74367SN"><color red="0.7" green="0.7" blue="0.7" /></text></element>
+	<element name="text_923"><text string="MM74C923N"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_6116"><text string="RAM HM6116P"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_2764"><text string="ROM M2764AFI"><color red="0.7" green="0.7" blue="0.7" /></text></element>
 	<element name="text_6802"><text string="CPU MC6802P"><color red="0.7" green="0.7" blue="0.7" /></text></element>
@@ -172,32 +174,71 @@ Esselte Studium Modulab layout
 	  <rect><bounds x="106" y="189" width="3" height="45" /><color red="0.6" green="0.58" blue="0.43" /></rect>	  
 	</element>
 
-	<group name="hdip">
-	  <bezel element="~col~"><bounds x="10" y="20" width="~w~" height="~h~" /></bezel>
-	  <bezel element="~t~"><bounds x="30" y="30" width="~tw~" height="~th~" /></bezel>	  
-	  <repeat count="~c~">
-	    <param name="x" start="15" increment="35" />
-	    <bezel element="silver"><bounds y="10" x="~x~" width="25" height="10" /></bezel>
-	    <bezel element="silver"><bounds y="~b~" x="~x~" width="25" height="10" /></bezel>
+	<group name="pinpair">
+	    <bezel element="silver"><bounds x="29" y="0" width="50" height="100" /></bezel>
+	    <bezel element="~col~"> <bounds x="0" y="10" width="108" height="80" /></bezel>
+	</group>
+	  
+	<group name="dip7">
+	  <repeat count="7">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
 	  </repeat>
 	</group>
-	
-	<group name="vdip">
-	  <bezel element="~col~"><bounds x="20" y="10" width="80" height="~h~" /></bezel>
-	  <bezel element="~t~"><bounds x="30" y="30" width="60" height="30" /></bezel>	  
-	  <repeat count="~c~">
-	    <param name="y" start="15" increment="35" />
-	    <bezel element="silver"><bounds x="10" y="~y~" width="10" height="25" /></bezel>
-	    <bezel element="silver"><bounds x="100" y="~y~" width="10" height="25" /></bezel>
+
+	<group name="dip8">
+	  <repeat count="8">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
 	  </repeat>
 	</group>
-	
+
+	<group name="dip10">
+	  <repeat count="10">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
+	  </repeat>
+	</group>
+
+	<group name="dip12">
+	  <repeat count="12">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
+	  </repeat>
+	</group>
+
+	<group name="dip14">
+	  <repeat count="14">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
+	  </repeat>
+	</group>
+
+	<group name="dip20">
+	  <repeat count="20">
+	    <param name="x" start="0" increment="100" />
+	    <group ref="pinpair"><bounds x="~x~" y="0" width="108" height="100" /></group>
+	  </repeat>
+	</group>
+
 	<group name="key">
 	  <bezel element="~keycol~" inputtag="LINE~line~" inputmask="~mask~">
 	    <bounds x="~x~" y="~y~" width="262" height="262" />
 	  </bezel>
 	  <bezel element="text_~bname~">
-	    <bounds x="~xt~" y="~yt~" width="150" height="150" />
+	    <bounds x="~xt~" y="~yt~" width="150" height="~h~" />
+	  </bezel>
+	</group>
+
+	<group name="key2">
+	  <bezel element="~keycol~" inputtag="LINE~line~" inputmask="~mask~">
+	    <bounds x="~x~" y="~y~" width="262" height="262" />
+	  </bezel>
+	  <bezel element="text_~bname~">
+	    <bounds x="~xt~" y="~yt~" width="130" height="70" />
+	  </bezel>
+	  <bezel element="text_~bname2~">
+	    <bounds x="~xt~" y="~yt2~" width="130" height="70" />
 	  </bezel>
 	</group>
 
@@ -235,6 +276,7 @@ Esselte Studium Modulab layout
 	  <!-- Key pad -->
 	  <bezel element="black"><bounds x="1780" y="818" width="1110" height="1395" /></bezel>
 	  <bezel element="black"><bounds x="1780" y="818" width="1390" height="280" /></bezel>
+          <param name="h" value="150" />
           <param name="keycol" value="brownkey" />
 	  <repeat count="4">
             <param name="bname" start="0" increment="1" />
@@ -251,6 +293,7 @@ Esselte Studium Modulab layout
 	  </repeat>
 	  <!-- Special Keys -->
 	  <!-- RUN key -->
+          <param name="h" value="75" />
           <param name="keycol" value="greenkey" />
           <param name="bname" value="run" />
           <param name="line" value="0" />
@@ -258,7 +301,7 @@ Esselte Studium Modulab layout
           <param name="xt" value="1835" />
           <param name="mask" value="0x10" />
           <param name="y" value="824" />
-          <param name="yt" value="888" />
+          <param name="yt" value="925" />
 	  <group ref="key"/>
 	  <!-- ADS key -->	  
           <param name="keycol" value="brownkey" />
@@ -281,12 +324,15 @@ Esselte Studium Modulab layout
 	  <group ref="key"/>
 	  <!-- RESET key -->	  
           <param name="keycol" value="redkey" />
-          <param name="bname" value="rst" />
+          <param name="bname" value="re" />
+          <param name="bname2" value="set" />
           <param name="line" value="4" />
           <param name="x" value="2900" />
           <param name="xt" value="2955" />
+          <param name="yt" value="908" />
+          <param name="yt2" value="963" />
           <param name="mask" value="0x04" />
-	  <group ref="key"/>
+	  <group ref="key2"/>
 
 	  <!-- BCD 7seg display -->
 	  <!--Adress-->
@@ -301,7 +347,9 @@ Esselte Studium Modulab layout
             <param name="x" start="1472" increment="224" />
 	    <group ref="digit" />
             <param name="xdip" start="1512" increment="224" />
-	    <group ref="vdip"><bounds x="~xdip~" y="528" width="100" height="270" /></group>
+            <param name="tdip" start="1542" increment="224" />
+	    <group ref="dip7"> <bounds x="~xdip~"  y="528"  width="100" height="270" /><orientation rotate="90" /></group>
+	    <bezel element="text_164"> <bounds x="~tdip~"  y="548"  width="45" height="180" />  <orientation rotate="90" /></bezel>
 	  </repeat>
 	  <!--Data-->
 	  <bezel element="text_data"><bounds x="2532" y="44" width="156" height="52" /></bezel>	  
@@ -309,142 +357,133 @@ Esselte Studium Modulab layout
             <param name="dno" start="1" increment="-1" />
             <param name="x" start="2428" increment="224" />
             <param name="xdip" start="2468" increment="224" />
-            <param name="xdipt" start="2489" increment="224" />
+            <param name="tdip" start="2498" increment="224" />
 	    <group ref="digit" />
-	    <group ref="vdip"><bounds x="~xdip~" y="528" width="100" height="270" /></group>
+	    <group ref="dip7"> <bounds x="~xdip~"  y="528"  width="100" height="270" /><orientation rotate="90" /></group>
+	    <bezel element="text_164"> <bounds x="~tdip~"  y="548"  width="45" height="180" />  <orientation rotate="90" /></bezel>
 	  </repeat>
 
 	  <!--scattered IC:s -->
-	    <param name="t" value="text_ls14"/>
-	    <group ref="vdip"><bounds x="1512" y="890" width="100" height="270" /></group>
-	    <param name="c" value="8"/>
-	    <param name="h" value="280"/>
-	    <param name="t" value="text_138"/>
-	    <group ref="vdip"><bounds x="1512" y="1236" width="100" height="320" /></group>
-	    <group ref="vdip"><bounds x="1512" y="2040" width="100" height="320" /></group>
-	    <param name="w" value="280"/>
-	    <param name="h" value="80"/>
-	    <param name="b" value="100"/>
-	    <param name="t" value="text_367"/>
-	    <param name="th" value="30"/>
-	    <param name="tw" value="60"/>
-	    <group ref="hdip"><bounds x="1110" y="2160" width="320" height="100" /></group>
-	    <param name="t" value="text_123"/>
-	    <group ref="hdip"><bounds x="600" y="2160" width="320" height="100" /></group>
-	    <param name="c" value="10" />
-	    <param name="h" value="350" />
-	    <param name="t" value="text_923"/>
-	    <group ref="vdip"><bounds x="1512" y="1590" width="100" height="400" /></group>
+	  <param name="col" value="brown"/>
+	  <group ref="dip7">          <bounds x="1512"  y="890"  width="100" height="270" /><orientation rotate="90" /></group>
+	  <bezel element="text_ls14"> <bounds x="1542"  y="910"  width="45" height="160" />  <orientation rotate="90" /></bezel>
 
-	    <!-- larger IC:s -->
-	    <param name="h" value="260"/>
-	    <param name="b" value="280"/>
-	    <param name="col" value="black"/>
-	    <param name="c" value="12"/>
-	    <param name="w" value="420"/>
-	    <param name="t" value="text_6116"/>
-	    <param name="th" value="40"/>
-	    <param name="tw" value="240"/>
-	    <group ref="hdip"><bounds x="725" y="1875" width="~w~" height="~h~" /></group> <!-- RAM -->
-	    <param name="col" value="brown"/>
-	    <param name="c" value="14"/>
-	    <param name="w" value="490"/>
-	    <param name="t" value="text_2764"/>
-	    <group ref="hdip"><bounds x="655" y="1600" width="~w~" height="~h~" /></group> <!-- ROM -->
-	    <param name="c" value="20"/>
-	    <param name="w" value="700"/>
-	    <param name="t" value="text_6802"/>
-	    <group ref="hdip"><bounds x="655" y="1240" width="~w~" height="~h~" /></group> <!-- CPU -->
-	    <param name="t" value="text_8154"/>
-	    <group ref="hdip"><bounds x="655" y="900" width="~w~" height="~h~" /></group>  <!-- INS8154 -->
+	  <group ref="dip8">          <bounds x="1512" y="1236"  width="100" height="280" /><orientation rotate="90" /></group>
+	  <bezel element="text_138">  <bounds x="1542" y="1256"  width="45" height="180" />  <orientation rotate="90" /></bezel>
 
-
-	    <!-- descrete components -->
-	    <bezel element="xtal"><bounds x="410" y="995" width="160" height="240" /></bezel>
-	    <bezel element="text_4mhz"><bounds x="420" y="1025" width="140" height="40" /></bezel>	  
-	    <bezel element="text_sunny"><bounds x="420" y="1075" width="140" height="40" /></bezel>
-
-	    <!-- mount holes -->
-	    <bezel element="mount"><bounds x="250"  y="2300" width="75" height="75" /></bezel>
-	    <bezel element="mount"><bounds x="1700" y="2300" width="75" height="75" /></bezel>
-	    <bezel element="mount"><bounds x="2860" y="2300" width="75" height="75" /></bezel>
-	    <bezel element="mount"><bounds x="250"  y="30"   width="75" height="75" /></bezel>
-	    <bezel element="mount"><bounds x="1700" y="30"   width="75" height="75" /></bezel>
-	    <bezel element="mount"><bounds x="2860" y="30"   width="75" height="75" /></bezel>
-	    <bezel element="mount"><bounds x="1170" y="630"  width="75" height="75" /></bezel>
-
-	    <!-- pins -->
-	    <!-- IRQ -->
-	    <bezel element="pin"><bounds x="440" y="1450"  width="30" height="30" /></bezel>	    
-	    <bezel element="text_irq"><bounds x="400" y="1395" width="120" height="50" /></bezel>
-	    <!-- Ports -->
-	    <repeat count="8">
-	      <param name="tid" start="7" increment="-1" />
-	      <param name="xp" start="180" increment="150" />
-	      <param name="txp" start="100" increment="150" />
-	      <repeat count="2">
-		<param name="yp" start="280" increment="140" />		
-		<param name="typ" start="275" increment="140" />		
-		<bezel element="pin"><bounds x="~xp~" y="~yp~"  width="30" height="30" /></bezel>	    
-		<bezel element="text_~tid~"><bounds x="~txp~" y="~typ~" width="120" height="50" /></bezel>	      
-	      </repeat>
-	    </repeat>
-	    <bezel element="text_porta"><bounds x="350" y="200" width="500" height="75" /></bezel>
-	    <bezel element="text_portb"><bounds x="350" y="340" width="500" height="75" /></bezel>
-	    <!-- power feed -->
-	    <bezel element="pin"><bounds x="150" y="575"  width="30" height="30" /></bezel>	    
-	    <bezel element="text_vcc"><bounds x="150" y="615" width="100" height="50" /></bezel>	      
-	    <bezel element="pin"><bounds x="150" y="710"  width="30" height="30" /></bezel>	    
-	    <bezel element="text_gnd"><bounds x="150" y="660" width="100" height="50" /></bezel>
-	    <!-- R pins -->
-	    <bezel element="pin"><bounds x="3050" y="1740"  width="30" height="30" /></bezel>	    
-	    <bezel element="text_r"><bounds x="2950" y="1735" width="100" height="50" /></bezel>	      
-	    <bezel element="pin"><bounds x="3050" y="1890"  width="30" height="30" /></bezel>	    
-	    <bezel element="text_r"><bounds x="2950" y="1885" width="100" height="50" /></bezel>
-	    <!-- trim pot -->
-	    <bezel element="trim"><bounds x="950" y="2160"  width="120" height="120" /></bezel>	    
-	    <!-- side connector -->
-	    <bezel element="amp"><bounds x="0" y="850"  width="250" height="925" /></bezel>
-	  </group>
+	  <group ref="dip8">          <bounds x="1512" y="2040"  width="100" height="280" /><orientation rotate="90" /></group>
+	  <bezel element="text_138">  <bounds x="1542" y="2060"  width="45" height="180" />  <orientation rotate="90" /></bezel>
+	    
+	  <group ref="dip8">          <bounds x="1110" y="2160"  width="280" height="100" /></group>
+	  <bezel element="text_367">  <bounds x="1140" y="2180"  width="180" height="45" /></bezel>
+	    
+	  <group ref="dip8">          <bounds x="600"  y="2160"  width="320" height="100" /></group>
+	  <bezel element="text_123">  <bounds x="630"  y="2180"  width="180" height="45" /></bezel>
+	    
+	  <group ref="dip10">         <bounds x="1512" y="1590"  width="100" height="400" /><orientation rotate="90" /></group>
+	  <bezel element="text_923">  <bounds x="1542" y="1630"  width="45" height="180" />  <orientation rotate="90" /></bezel>
+	    
+	  <!-- larger IC:s -->
+	  <param name="col" value="black"/>
+	  <group ref="dip12">          <bounds x="725"  y="1875"  width="420" height="260" /></group> <!-- RAM -->
+	  <bezel element="text_6116">  <bounds x="835"  y="1985"  width="240" height="40" /></bezel>
+	    
+	  <param name="col" value="brown"/>
+	  <group ref="dip14">          <bounds x="655"  y="1600"  width="490" height="260" /></group> <!-- ROM -->
+	  <bezel element="text_2764">  <bounds x="765"  y="1710"  width="240" height="40" /></bezel>
 	  
-	  <group name="screws">
-	    <!-- max size -->
-	    <bezel element="pcb_blue"><bounds x="0" y="0" width="1" height="1" /></bezel>
-	    <bezel element="pcb_blue"><bounds x="3200" y="2400" width="1" height="1" /></bezel>
-	    <!-- screws -->
-	    <group ref="screw"><bounds x="250"  y="2300" width="75" height="75" /></group>
-	    <group ref="screw"><bounds x="1700" y="2300" width="75" height="75" /></group>
-	    <group ref="screw"><bounds x="2860" y="2300" width="75" height="75" /></group>
-	    <group ref="screw"><bounds x="1700" y="30"   width="75" height="75" /></group>
-	    <group ref="screw"><bounds x="2860" y="30"   width="75" height="75" /></group>
-	    <group ref="screw"><bounds x="1170" y="630"  width="75" height="75" /></group>
-	  </group>
-
-	  <group name="ledsandbuttons">
-	    <!-- max size -->
-	    <bezel element="pcb_blue"><bounds x="0" y="0" width="1" height="1" /></bezel>
-	    <bezel element="pcb_blue"><bounds x="1000" y="500" width="1" height="1" /></bezel>
-	    <!-- leds -->
-	    <bezel element="white"><bounds x="0" y="0" width="1000" height="500" /></bezel>
-	    <repeat count="6">
-	      <param name="x" start="200" increment="100" />
-	      <param name="nb" start="0" increment="1" />
-	      <bezel name="LED ~nb~" element="redled"><bounds x="~x~" y="250" width="15" height="15" /></bezel>
-	    </repeat>
-	  </group>
-
-	  <view name="Base Artwork">
-	    <group ref="pcb"><bounds x="0" y="0" width="800" height="600" /></group>
-	    <group ref="hood"><bounds x="0" y="0" width="800" height="600"/> <color alpha="0.2" /></group>
-	    <group ref="screws"><bounds x="0" y="0" width="800" height="600"/></group>
-	  </view>
+	  <group ref="dip20">          <bounds x="655"  y="1240"  width="700" height="260" /></group> <!-- CPU -->
+	  <bezel element="text_6802">  <bounds x="885"  y="1350"  width="240" height="40" /></bezel>
 	  
-	  <view name="Leds and Buttons Artwork">
-	    <group ref="pcb"><bounds x="0" y="0" width="800" height="600" /></group>
-	    <group ref="hood"><bounds x="0" y="0" width="800" height="600"/> <color alpha="0.2" /></group>
-	    <group ref="screws"><bounds x="0" y="0" width="800" height="600"/></group>
-	    <group ref="ledsandbuttons"><bounds x="0" y="0" width="342" height="126" /><color alpha="0.8" /></group>
-	    <!-- group ref="hood"><bounds x="0" y="0" width="800" height="600"/> <color alpha="0.2" /></group>
-	    <group ref="screws"><bounds x="0" y="0" width="800" height="600"/></group -->
-	  </view>
+	  <group ref="dip20">          <bounds x="655"  y="900"   width="700" height="260" /></group> <!-- INS8154 -->
+	  <bezel element="text_8154">  <bounds x="885"  y="1010"   width="240" height="40" /></bezel>
+	  
+	  <!-- descrete components -->
+	  <bezel element="xtal"><bounds x="410" y="995" width="160" height="240" /></bezel>
+	  <bezel element="text_4mhz"><bounds x="420" y="1025" width="140" height="40" /></bezel>	  
+	  <bezel element="text_sunny"><bounds x="420" y="1075" width="140" height="40" /></bezel>
+	  
+	  <!-- mount holes -->
+	  <bezel element="mount"><bounds x="250"  y="2300" width="75" height="75" /></bezel>
+	  <bezel element="mount"><bounds x="1700" y="2300" width="75" height="75" /></bezel>
+	  <bezel element="mount"><bounds x="2860" y="2300" width="75" height="75" /></bezel>
+	  <bezel element="mount"><bounds x="250"  y="30"   width="75" height="75" /></bezel>
+	  <bezel element="mount"><bounds x="1700" y="30"   width="75" height="75" /></bezel>
+	  <bezel element="mount"><bounds x="2860" y="30"   width="75" height="75" /></bezel>
+	  <bezel element="mount"><bounds x="1170" y="630"  width="75" height="75" /></bezel>
+	  
+	  <!-- pins -->
+	  <!-- IRQ -->
+	  <bezel element="pin"><bounds x="440" y="1450"  width="30" height="30" /></bezel>	    
+	  <bezel element="text_irq"><bounds x="400" y="1395" width="120" height="50" /></bezel>
+	  <!-- Ports -->
+	  <repeat count="8">
+	    <param name="tid" start="7" increment="-1" />
+	    <param name="xp" start="180" increment="150" />
+	    <param name="txp" start="100" increment="150" />
+	    <repeat count="2">
+	      <param name="yp" start="280" increment="140" />		
+	      <param name="typ" start="275" increment="140" />		
+	      <bezel element="pin"><bounds x="~xp~" y="~yp~"  width="30" height="30" /></bezel>	    
+	      <bezel element="text_~tid~"><bounds x="~txp~" y="~typ~" width="120" height="50" /></bezel>	      
+	    </repeat>
+	  </repeat>
+	  <bezel element="text_porta"><bounds x="350" y="200" width="500" height="75" /></bezel>
+	  <bezel element="text_portb"><bounds x="350" y="340" width="500" height="75" /></bezel>
+	  <!-- power feed -->
+	  <bezel element="pin"><bounds x="150" y="575"  width="30" height="30" /></bezel>	    
+	  <bezel element="text_vcc"><bounds x="150" y="615" width="100" height="50" /></bezel>	      
+	  <bezel element="pin"><bounds x="150" y="710"  width="30" height="30" /></bezel>	    
+	  <bezel element="text_gnd"><bounds x="150" y="660" width="100" height="50" /></bezel>
+	  <!-- R pins -->
+	  <bezel element="pin"><bounds x="3050" y="1740"  width="30" height="30" /></bezel>	    
+	  <bezel element="text_r"><bounds x="2950" y="1735" width="100" height="50" /></bezel>	      
+	  <bezel element="pin"><bounds x="3050" y="1890"  width="30" height="30" /></bezel>	    
+	  <bezel element="text_r"><bounds x="2950" y="1885" width="100" height="50" /></bezel>
+	  <!-- trim pot -->
+	  <bezel element="trim"><bounds x="950" y="2160"  width="120" height="120" /></bezel>	    
+	  <!-- side connector -->
+	  <bezel element="amp"><bounds x="0" y="850"  width="250" height="925" /></bezel>
+	</group>
+	
+	<group name="screws">
+	  <!-- max size -->
+	  <bezel element="pcb_blue"><bounds x="0" y="0" width="1" height="1" /></bezel>
+	  <bezel element="pcb_blue"><bounds x="3200" y="2400" width="1" height="1" /></bezel>
+	  <!-- screws -->
+	  <group ref="screw"><bounds x="250"  y="2300" width="75" height="75" /></group>
+	  <group ref="screw"><bounds x="1700" y="2300" width="75" height="75" /></group>
+	  <group ref="screw"><bounds x="2860" y="2300" width="75" height="75" /></group>
+	  <group ref="screw"><bounds x="1700" y="30"   width="75" height="75" /></group>
+	  <group ref="screw"><bounds x="2860" y="30"   width="75" height="75" /></group>
+	  <group ref="screw"><bounds x="1170" y="630"  width="75" height="75" /></group>
+	</group>
+	
+	<group name="ledsandbuttons">
+	  <!-- max size -->
+	  <bezel element="pcb_blue"><bounds x="0" y="0" width="1" height="1" /></bezel>
+	  <bezel element="pcb_blue"><bounds x="1000" y="500" width="1" height="1" /></bezel>
+	  <!-- leds -->
+	  <bezel element="white"><bounds x="0" y="0" width="1000" height="500" /></bezel>
+	  <repeat count="6">
+	    <param name="x" start="200" increment="100" />
+	    <param name="nb" start="0" increment="1" />
+	    <bezel name="LED ~nb~" element="redled"><bounds x="~x~" y="250" width="15" height="15" /></bezel>
+	  </repeat>
+	</group>
+	
+	<view name="Base Artwork">
+	  <group ref="pcb"><bounds x="0" y="0" width="800" height="600" /></group>
+	  <group ref="hood"><bounds x="0" y="0" width="800" height="600"/> <color alpha="0.2" /></group>
+	  <group ref="screws"><bounds x="0" y="0" width="800" height="600"/></group>
+	</view>
+	
+	<view name="Leds and Buttons Artwork">
+	  <group ref="pcb"><bounds x="0" y="0" width="800" height="600" /></group>
+	  <group ref="hood"><bounds x="0" y="0" width="800" height="600"/> <color alpha="0.2" /></group>
+	  <group ref="screws"><bounds x="0" y="0" width="800" height="600"/></group>
+	  <group ref="ledsandbuttons"><bounds x="0" y="0" width="342" height="126" /><color alpha="0.8" /></group>
+	  <!-- group ref="hood"><bounds x="0" y="0" width="800" height="600"/> <color alpha="0.2" /></group>
+	       <group ref="screws"><bounds x="0" y="0" width="800" height="600"/></group -->
+	</view>
 </mamelayout>
