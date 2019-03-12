@@ -22,7 +22,7 @@ DEFINE_DEVICE_TYPE(MODULAB_LEDS, modulab_leds_device, "mlleds", "Modulab IC-D6A,
 modulab_leds_device::modulab_leds_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, MODULAB_LEDS, tag, owner, clock)
 	, device_modulab_parallel_interface(mconfig, *this)
-#if 0
+#if LOCAL_ARTWORK
 	, m_leds(*this, "led%u", 0U)
 #endif
 	, m_leda(*this, "leda")
@@ -37,12 +37,14 @@ modulab_leds_device::modulab_leds_device(const machine_config &mconfig, const ch
 
 void modulab_leds_device::device_start()
 {
-  //	m_leds.resolve();
+#if LOCAL_ARTWORK  
+  	m_leds.resolve();
+#endif
 }
 
-READ16_MEMBER(modulab_leds_device::leds_r)
+uint16_t modulab_leds_device::leds_r()
 {
-  uint8_t m_leds = 0;
+  uint16_t m_leds = 0;
   m_leds |= (m_bits & (1 << m_leda->read())) == 0 ? 0x01 : 0x00;
   m_leds |= (m_bits & (1 << m_ledb->read())) == 0 ? 0x02 : 0x00;
   m_leds |= (m_bits & (1 << m_ledc->read())) == 0 ? 0x04 : 0x00;
@@ -55,7 +57,7 @@ READ16_MEMBER(modulab_leds_device::leds_r)
 
 void modulab_leds_device::update_leds()
 {
-#if 0
+#if LOCAL_ARTWORK
   m_leds[0] = m_bits & (1 << m_leda->read());
   m_leds[1] = m_bits & (1 << m_ledb->read());
   m_leds[2] = m_bits & (1 << m_ledc->read());

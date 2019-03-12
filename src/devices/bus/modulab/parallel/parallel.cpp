@@ -69,6 +69,14 @@ WRITE8_MEMBER( modulab_parallel_slot_device::portb_w )
 		m_dev->portb_w(data);
 }
 
+uint16_t modulab_parallel_slot_device::leds_r()
+{
+	if (m_dev)
+		return m_dev->leds_r();
+	else
+		return 0x00;
+}
+
 //
 // Port interface
 //

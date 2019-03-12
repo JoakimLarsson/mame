@@ -541,6 +541,7 @@ class modulab_state : public didact_state
 		, m_lab1(*this, "lab1")
 		, m_lab2(*this, "lab2")
 		, m_da(0)
+		, m_leds(*this, "led%u")
 	{ }
 
 	required_device<m6802_cpu_device> m_maincpu;
@@ -583,29 +584,32 @@ private:
   	required_device<modulab_parallel_slot_device> m_lab1;
   	required_device<modulab_parallel_slot_device> m_lab2;
 	uint8_t m_da;
+	output_finder<16> m_leds;
 };
 
 void update_leds(uint16_t leds)
 {
   for (int i = 0; i < 16; i++)
   {
-    Do some stufff....
+    //    Do some stufff....
   }
 }
 
 READ8_MEMBER(modulab_state::porta_r){return 0xff;}
 READ8_MEMBER(modulab_state::portb_r){return 0xff;}
+
 WRITE8_MEMBER(modulab_state::porta_w)
 {
 	m_lab1->porta_w(space, offset, data, 0xff);
 	m_lab2->porta_w(space, offset, data, 0xff);
 	update_leds((m_lab1->leds_r() & 0x3f) | ((m_lab2->leds_r() & 0x3f) << 6));
 }
+
 WRITE8_MEMBER(modulab_state::portb_w)
 {
 	m_lab1->portb_w(space, offset, data, 0xff);
 	m_lab2->portb_w(space, offset, data, 0xff);
-	update_leds(m_lab1->leds_r() | m_lab2->leds_r());
+	update_leds((m_lab1->leds_r() & 0x3f) | ((m_lab2->leds_r() & 0x3f) << 6));
 }
 
 WRITE_LINE_MEMBER( modulab_state::da_w )
@@ -826,17 +830,10 @@ void modulab_state::modulab(machine_config &config)
 
 	/* PIA */
 	INS8154(config, m_pia1);
-#if 0
-	m_pia1->in_a().set("lab", FUNC(modulab_parallel_slot_device::porta_r));
-	m_pia1->out_a().set("lab", FUNC(modulab_parallel_slot_device::porta_w));
-	m_pia1->in_b().set("lab", FUNC(modulab_parallel_slot_device::portb_r));
-	m_pia1->out_b().set("lab", FUNC(modulab_parallel_slot_device::portb_w));
-#else
 	m_pia1->in_a().set(FUNC(modulab_state::porta_r));
 	m_pia1->out_a().set(FUNC(modulab_state::porta_w));
 	m_pia1->in_b().set(FUNC(modulab_state::portb_r));
 	m_pia1->out_b().set(FUNC(modulab_state::portb_w));
-#endif
 
 	// Laboration pins
 	MODULAB_PARALLEL_SLOT(config, "lab1");

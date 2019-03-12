@@ -56,8 +56,8 @@ protected:
 	virtual ioport_constructor device_input_ports() const override;
 	virtual void porta_w(uint8_t data) override;
 	virtual void portb_w(uint8_t data) override;
+	virtual uint16_t leds_r() override;	
 	void update_leds();
-	DECLARE_READ8_MEMBER(leds_r);	
 	//output_finder<6> m_leds;
 #if 1
 	required_ioport m_leda;

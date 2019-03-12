@@ -53,6 +53,8 @@
 
 #pragma once
 
+#define LOCAL_ARTWORK 0 // Awaiting suppor for sub-layouts
+
 #include "labs.h"
 
 class device_modulab_parallel_interface;
@@ -70,6 +72,8 @@ public:
 	}
 	modulab_parallel_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 	virtual ~modulab_parallel_slot_device();
+	
+	virtual uint16_t leds_r(); // Read status of all leads/lamps of a laboration to update layout
 
 	DECLARE_READ8_MEMBER(porta_r);
 	DECLARE_WRITE8_MEMBER(porta_w);
@@ -90,6 +94,7 @@ class device_modulab_parallel_interface : public device_slot_card_interface
   virtual void porta_w(uint8_t data) { }
   virtual uint8_t portb_r() { return 0xff; } // Should reflect unloaded port pins
   virtual void portb_w(uint8_t data) { }
+  virtual uint16_t leds_r() { return 0x00; } // Should reflect status of leds/lamps for a prticular laboration
  protected:
   device_modulab_parallel_interface(const machine_config &mconfig, device_t &device);
 
