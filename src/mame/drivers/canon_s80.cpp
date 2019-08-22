@@ -52,7 +52,8 @@ void canons80_state::init_canons80()
 
 ROM_START( canons80 )
 	ROM_REGION( 0x10000, "maincpu", 0 ) /* 6800 code */
-	ROM_LOAD( "canon_8735kx_nh4-0029_064.ic6", 0x8000, 0x8000, CRC(b6cd2ff7) SHA1(e47a136300c826e480fac1be7fc090523078a2a6) )
+	ROM_LOAD( "total.bin", 0xf000, 0x1000, CRC(5572c161) SHA1(d62258675f5949916753853bab98f9ebb2ed2b6e) )
+//ROM_LOAD( "canon_8735kx_nh4-0029_064.ic6", 0x8000, 0x8000, CRC(b6cd2ff7) SHA1(e47a136300c826e480fac1be7fc090523078a2a6) )
 ROM_END
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT  CLASS           INIT           COMPANY  FULLNAME                            FLAGS */
