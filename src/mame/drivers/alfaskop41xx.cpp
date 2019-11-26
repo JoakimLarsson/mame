@@ -25,6 +25,8 @@ Dansk Datahistorisk Forening - http://datamuseum.dk/
 #include "cpu/m6800/m6800.h"
 #include "machine/6850acia.h"
 #include "machine/6821pia.h"
+#include "machine/mc6854.h"
+#include "machine/mc6844.h"
 #include "video/mc6845.h"
 #include "screen.h"
 
@@ -52,13 +54,15 @@ public:
 	alfaskop4110_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag)
 		, m_maincpu(*this, "maincpu")
-		, m_kbdacia(*this, "kbdacia")
-		, m_micpia(*this, "micpia")
-		, m_diapia(*this, "diapia")
+		, m_kbd_acia(*this, "kbd_acia")
+		, m_mic_pia(*this, "mic_pia")
+		, m_dia_pia(*this, "dia_pia")
 		, m_crtc(*this, "crtc")
 		, m_screen(*this, "screen")
 		, m_vram(*this, "vram")
 		, m_chargen(*this, "chargen")
+		, m_adlc(*this, "tia_adlc")
+		, m_dma(*this, "tia_dma")
 	{ }
 
 	void alfaskop4110(machine_config &config);
@@ -66,9 +70,9 @@ private:
 	void mem_map(address_map &map);
 
 	required_device<cpu_device> m_maincpu;
-	required_device<acia6850_device> m_kbdacia;
-	required_device<pia6821_device> m_micpia;
-	required_device<pia6821_device> m_diapia;
+	required_device<acia6850_device> m_kbd_acia;
+	required_device<pia6821_device> m_mic_pia;
+	required_device<pia6821_device> m_dia_pia;
 	required_device<mc6845_device> m_crtc;
 	required_device<screen_device> m_screen;
 	required_shared_ptr<uint8_t> m_vram;
@@ -76,6 +80,10 @@ private:
 	/* Video controller */
 	required_region_ptr<uint8_t> m_chargen;
 	MC6845_UPDATE_ROW(crtc_update_row);
+
+	/* TIA */
+	required_device<mc6854_device> m_adlc;
+	required_device<mc6844_device> m_dma;
 };
 
 class alfaskop4120_state : public driver_device
@@ -84,8 +92,8 @@ public:
 	alfaskop4120_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag)
 		, m_maincpu(*this, "maincpu")
-		, m_micpia(*this, "micpia")
-		, m_fdapia(*this, "diapia")
+		, m_mic_pia(*this, "mic_pia")
+		, m_fdapia(*this, "dia_pia")
 	{ }
 
 	void alfaskop4120(machine_config &config);
@@ -93,7 +101,7 @@ private:
 	void mem_map(address_map &map);
 
 	required_device<cpu_device> m_maincpu;
-	required_device<pia6821_device> m_micpia;
+	required_device<pia6821_device> m_mic_pia;
 	required_device<pia6821_device> m_fdapia;
 };
 
@@ -103,7 +111,7 @@ public:
 	alfaskop4101_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag)
 		, m_maincpu(*this, "maincpu")
-		, m_micpia(*this, "micpia")
+		, m_mic_pia(*this, "mic_pia")
 	{ }
 
 	void alfaskop4101(machine_config &config);
@@ -111,7 +119,7 @@ private:
 	void mem_map(address_map &map);
 
 	required_device<cpu_device> m_maincpu;
-	required_device<pia6821_device> m_micpia;
+	required_device<pia6821_device> m_mic_pia;
 };
 
 void alfaskop4110_state::mem_map(address_map &map)
@@ -126,12 +134,12 @@ void alfaskop4110_state::mem_map(address_map &map)
 	map(0xf7d9, 0xf7d9).mirror(0x06).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("CRTC reg r %04x: %02x\n", offset, 0); return m_crtc->register_r(); }),
 					      NAME([this](offs_t offset, uint8_t data) { LOGIO("CRTC reg w %04x: %02x\n", offset, data); m_crtc->register_w(data);}));
 	map(0xf7d8, 0xf7d8).mirror(0x06).lw8(NAME([this](offs_t offset, uint8_t data) { LOGIO("CRTC adr w %04x: %02x\n", offset, data); m_crtc->address_w(data); }));
-	map(0xf7d0, 0xf7d3).mirror(0x04).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("DIA pia_r %04x: %02x\n", offset, 0); return m_diapia->read(offset & 3); }),
-					      NAME([this](offs_t offset, uint8_t data) { LOGIO("DIA pia_w %04x: %02x\n", offset, data); m_diapia->write(offset & 3, data); }));
-	map(0xf7c4, 0xf7c7).mirror(0x00).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("MIC pia_r %04x: %02x\n", offset, 0); return m_micpia->read(offset & 3); }),
-					      NAME( [this](offs_t offset, uint8_t data) { LOGIO("MIC pia_w %04x: %02x\n", offset, data); m_micpia->write(offset & 3, data); }));
-	map(0xf7c0, 0xf7c1).mirror(0x02).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("KBD acia_r %04x: %02x\n", offset, 0); return m_kbdacia->read(offset & 1); }),
-					      NAME( [this](offs_t offset, uint8_t data) { LOGIO("KBD acia_w %04x: %02x\n", offset, data); m_kbdacia->write(offset & 1, data); }));
+	map(0xf7d0, 0xf7d3).mirror(0x04).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("DIA pia_r %04x: %02x\n", offset, 0); return m_dia_pia->read(offset & 3); }),
+					      NAME([this](offs_t offset, uint8_t data) { LOGIO("DIA pia_w %04x: %02x\n", offset, data); m_dia_pia->write(offset & 3, data); }));
+	map(0xf7c4, 0xf7c7).mirror(0x00).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("MIC pia_r %04x: %02x\n", offset, 0); return m_mic_pia->read(offset & 3); }),
+					      NAME( [this](offs_t offset, uint8_t data) { LOGIO("MIC pia_w %04x: %02x\n", offset, data); m_mic_pia->write(offset & 3, data); }));
+	map(0xf7c0, 0xf7c1).mirror(0x02).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("KBD acia_r %04x: %02x\n", offset, 0); return m_kbd_acia->read(offset & 1); }),
+					      NAME( [this](offs_t offset, uint8_t data) { LOGIO("KBD acia_w %04x: %02x\n", offset, data); m_kbd_acia->write(offset & 1, data); }));
 
        	map(0xf7fc, 0xf7fc).mirror(0x00).lr8(NAME([this](offs_t offset) -> uint8_t { LOGIO("Address Switch 0-7\n"); return 0; }));
 
@@ -146,8 +154,8 @@ void alfaskop4120_state::mem_map(address_map &map)
 				 NAME([this](offs_t offset, uint8_t data) {	LOGNVRAM("nvram_w %04x: %02x\n", offset, data);	}));
 	map(0xf740, 0xf743).mirror(0x0c).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("FDA pia_r %04x: %02x\n", offset, 0); return m_fdapia->read(offset & 3); }),
 					      NAME([this](offs_t offset, uint8_t data) { LOGIO("FDA pia_w %04x: %02x\n", offset, data); m_fdapia->write(offset & 3, data); }));
-	map(0xf7c4, 0xf7c7).mirror(0x00).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("MIC pia_r %04x: %02x\n", offset, 0); return m_micpia->read(offset & 3); }),
-					      NAME([this](offs_t offset, uint8_t data) { LOGIO("MIC pia_w %04x: %02x\n", offset, data); m_micpia->write(offset & 3, data); }));
+	map(0xf7c4, 0xf7c7).mirror(0x00).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("MIC pia_r %04x: %02x\n", offset, 0); return m_mic_pia->read(offset & 3); }),
+					      NAME([this](offs_t offset, uint8_t data) { LOGIO("MIC pia_w %04x: %02x\n", offset, data); m_mic_pia->write(offset & 3, data); }));
 	map(0xf800, 0xffff).rom().region("roms", 0);
 }
 
@@ -157,8 +165,8 @@ void alfaskop4101_state::mem_map(address_map &map)
 	map(0x0000, 0xefff).ram();
 	map(0xf600, 0xf6ff).lrw8(NAME([this](offs_t offset) -> uint8_t { LOGNVRAM("nvram_r %04x: %02x\n", offset, 0); return (uint8_t) 0; }),
 				 NAME([this](offs_t offset, uint8_t data) {	LOGNVRAM("nvram_w %04x: %02x\n", offset, data);	}));
-	map(0xf7c4, 0xf7c7).mirror(0x00).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("MIC pia_r %04x: %02x\n", offset, 0); return m_micpia->read(offset & 3); }),
-					      NAME([this](offs_t offset, uint8_t data) { LOGIO("MIC pia_w %04x: %02x\n", offset, data); m_micpia->write(offset & 3, data); }));
+	map(0xf7c4, 0xf7c7).mirror(0x00).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("MIC pia_r %04x: %02x\n", offset, 0); return m_mic_pia->read(offset & 3); }),
+					      NAME([this](offs_t offset, uint8_t data) { LOGIO("MIC pia_w %04x: %02x\n", offset, data); m_mic_pia->write(offset & 3, data); }));
 	map(0xf800, 0xffff).rom().region("roms", 0);
 }
 
@@ -207,27 +215,27 @@ void alfaskop4110_state::alfaskop4110(machine_config &config)
 	m_screen->set_raw(19'170'000, 80 * 8, 0, 80 * 8, 400, 0, 400);
 	m_screen->set_screen_update("crtc", FUNC(mc6845_device::screen_update));
 
-	PIA6821(config, m_micpia, 0); // Main board PIA
-	m_micpia->readcb1_handler().set([this](offs_t offset) -> uint8_t { LOGMIC("MIC PIA: CB1_r\n"); return 0;});
-	m_micpia->cb2_handler().set([this](offs_t offset, uint8_t data) { LOGMIC("MIC PIA: CB2_w\n"); });
-	m_micpia->writepa_handler().set([this](offs_t offset, uint8_t data) { LOGMIC("MIC PIA: PA_w\n"); });
-	m_micpia->writepb_handler().set([this](offs_t offset, uint8_t data) { LOGMIC("MIC PIA: PB_w\n"); });
-	m_micpia->readpa_handler().set([this](offs_t offset) -> uint8_t { LOGMIC("MIC PIA: PA_r\n"); return 0;});
-	m_micpia->readpb_handler().set([this](offs_t offset) -> uint8_t { LOGMIC("MIC PIA: PB_r\n"); return 0;});
-	m_micpia->readca1_handler().set([this](offs_t offset) -> uint8_t { LOGMIC("MIC PIA: CA1_r\n"); return 0;});
-	m_micpia->readca2_handler().set([this](offs_t offset) -> uint8_t { LOGMIC("MIC PIA: CA2_r\n"); return 0;});
+	PIA6821(config, m_mic_pia, 0); // Main board PIA
+	m_mic_pia->readcb1_handler().set([this](offs_t offset) -> uint8_t { LOGMIC("MIC PIA: CB1_r\n"); return 0;});
+	m_mic_pia->cb2_handler().set([this](offs_t offset, uint8_t data) { LOGMIC("MIC PIA: CB2_w\n"); });
+	m_mic_pia->writepa_handler().set([this](offs_t offset, uint8_t data) { LOGMIC("MIC PIA: PA_w\n"); });
+	m_mic_pia->writepb_handler().set([this](offs_t offset, uint8_t data) { LOGMIC("MIC PIA: PB_w\n"); });
+	m_mic_pia->readpa_handler().set([this](offs_t offset) -> uint8_t { LOGMIC("MIC PIA: PA_r\n"); return 0;});
+	m_mic_pia->readpb_handler().set([this](offs_t offset) -> uint8_t { LOGMIC("MIC PIA: PB_r\n"); return 0;});
+	m_mic_pia->readca1_handler().set([this](offs_t offset) -> uint8_t { LOGMIC("MIC PIA: CA1_r\n"); return 0;});
+	m_mic_pia->readca2_handler().set([this](offs_t offset) -> uint8_t { LOGMIC("MIC PIA: CA2_r\n"); return 0;});
 
-	PIA6821(config, m_diapia, 0); // Display PIA, controls how the CRTC accesses memory etc
-	m_diapia->readcb1_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: CB1_r\n"); return 0;});
-	m_diapia->cb2_handler().set([this](offs_t offset, uint8_t data) { LOGDIA("DIA PIA: CB2_w\n"); });
-	m_diapia->writepa_handler().set([this](offs_t offset, uint8_t data) { LOGDIA("DIA PIA: PA_w\n"); });
-	m_diapia->writepb_handler().set([this](offs_t offset, uint8_t data) { LOGDIA("DIA PIA: PB_w\n"); });
-	m_diapia->readpa_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: PA_r\n"); return 0;});
-	m_diapia->readpb_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: PB_r\n"); return 0;});
-	m_diapia->readca1_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: CA1_r\n"); return 0;});
-	m_diapia->readca2_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: CA2_r\n"); return 0;});
+	PIA6821(config, m_dia_pia, 0); // Display PIA, controls how the CRTC accesses memory etc
+	m_dia_pia->readcb1_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: CB1_r\n"); return 0;});
+	m_dia_pia->cb2_handler().set([this](offs_t offset, uint8_t data) { LOGDIA("DIA PIA: CB2_w\n"); });
+	m_dia_pia->writepa_handler().set([this](offs_t offset, uint8_t data) { LOGDIA("DIA PIA: PA_w\n"); });
+	m_dia_pia->writepb_handler().set([this](offs_t offset, uint8_t data) { LOGDIA("DIA PIA: PB_w\n"); });
+	m_dia_pia->readpa_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: PA_r\n"); return 0;});
+	m_dia_pia->readpb_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: PB_r\n"); return 0;});
+	m_dia_pia->readca1_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: CA1_r\n"); return 0;});
+	m_dia_pia->readca2_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: CA2_r\n"); return 0;});
 
-	ACIA6850(config, m_kbdacia, 0);
+	ACIA6850(config, m_kbd_acia, 0);
 	//CLOCK(config, "acia_clock", ACIA_CLOCK).signal_handler().set(FUNC(alfaskop4110_state::write_acia_clock));
 }
 
@@ -237,7 +245,7 @@ void alfaskop4120_state::alfaskop4120(machine_config &config)
 	M6800(config, m_maincpu, XTAL(19'170'000) / 18); // Verified from service manual
 	m_maincpu->set_addrmap(AS_PROGRAM, &alfaskop4120_state::mem_map);
 
-	PIA6821(config, m_micpia, 0); // Main board PIA
+	PIA6821(config, m_mic_pia, 0); // Main board PIA
 	PIA6821(config, m_fdapia, 0); // Floppy Disk PIA
 }
 
@@ -247,7 +255,7 @@ void alfaskop4101_state::alfaskop4101(machine_config &config)
 	M6800(config, m_maincpu, XTAL(19'170'000) / 18); // Verified from service manual
 	m_maincpu->set_addrmap(AS_PROGRAM, &alfaskop4101_state::mem_map);
 	
-	PIA6821(config, m_micpia, 0); // Main board PIA
+	PIA6821(config, m_mic_pia, 0); // Main board PIA
 }
 
 /* ROM definitions */
