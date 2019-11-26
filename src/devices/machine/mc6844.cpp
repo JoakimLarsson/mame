@@ -70,6 +70,7 @@ DEFINE_DEVICE_TYPE(MC6844, mc6844_device, "mc6844", "MC6844 DMA")
 //-------------------------------------------------
 mc6844_device::mc6844_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, MC6844, tag, owner, clock)
+	, m_out_int_cb(*this)
 {
 }
 
@@ -79,6 +80,14 @@ mc6844_device::mc6844_device(const machine_config &mconfig, const char *tag, dev
 //-------------------------------------------------
 void mc6844_device::device_add_mconfig(machine_config &config)
 {
+}
+
+//-------------------------------------------------
+//  device_resolve_objects - device-specific setup
+//-------------------------------------------------
+void mc6844_device::device_resolve_objects()
+{
+	m_out_int_cb.resolve_safe();
 }
 
 //-------------------------------------------------
@@ -290,7 +299,7 @@ void mc6844_device::m6844_update_interrupt()
 		{
 			// Set interrupt indication bit 7.
 			m_m6844_interrupt |= 0x80;
-			//swtpc09_irq_handler(DMAC_IRQ, ASSERT_LINE); // FIX: callback
+			m_out_int_cb(ASSERT_LINE);
 		}
 	}
 	else
@@ -299,7 +308,7 @@ void mc6844_device::m6844_update_interrupt()
 		{
 			// Clear interrupt indication bit 7.
 			m_m6844_interrupt &= 0x7f;
-			// swtpc09_irq_handler(DMAC_IRQ, CLEAR_LINE); // FIX: callback
+			m_out_int_cb(CLEAR_LINE);
 		}
 	}
 }

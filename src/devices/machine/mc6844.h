@@ -31,6 +31,8 @@ public:
 	// construction/destruction
 	mc6844_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
+	auto out_int_callback() { return m_out_int_cb.bind(); }
+
 	// I/O operations
 	DECLARE_READ8_MEMBER ( m6844_r );
 	DECLARE_WRITE8_MEMBER ( m6844_w );
@@ -38,9 +40,12 @@ public:
 protected:
 	// device-level overrides
 	//virtual void device_validity_check(validity_checker &valid) const override;
+	virtual void device_resolve_objects() override;
 	virtual void device_add_mconfig(machine_config &config) override;
 	virtual void device_start() override;
 	virtual void device_reset() override;
+
+	devcb_write_line    m_out_int_cb;
 
 	/* channel_data structure holds info about each 6844 DMA channel */
 	struct m6844_channel_data

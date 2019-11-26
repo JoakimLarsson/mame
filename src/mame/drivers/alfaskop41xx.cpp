@@ -61,8 +61,8 @@ public:
 		, m_screen(*this, "screen")
 		, m_vram(*this, "vram")
 		, m_chargen(*this, "chargen")
-		, m_adlc(*this, "tia_adlc")
-		, m_dma(*this, "tia_dma")
+		, m_tia_adlc(*this, "tia_adlc")
+		, m_tia_dma(*this, "tia_dma")
 	{ }
 
 	void alfaskop4110(machine_config &config);
@@ -82,8 +82,8 @@ private:
 	MC6845_UPDATE_ROW(crtc_update_row);
 
 	/* TIA */
-	required_device<mc6854_device> m_adlc;
-	required_device<mc6844_device> m_dma;
+	required_device<mc6854_device> m_tia_adlc;
+	required_device<mc6844_device> m_tia_dma;
 };
 
 class alfaskop4120_state : public driver_device
@@ -237,6 +237,10 @@ void alfaskop4110_state::alfaskop4110(machine_config &config)
 
 	ACIA6850(config, m_kbd_acia, 0);
 	//CLOCK(config, "acia_clock", ACIA_CLOCK).signal_handler().set(FUNC(alfaskop4110_state::write_acia_clock));
+
+	MC6854(config, m_tia_adlc, 0);
+
+	MC6844(config, m_tia_dma, 0);
 }
 
 void alfaskop4120_state::alfaskop4120(machine_config &config)
