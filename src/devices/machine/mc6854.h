@@ -23,10 +23,12 @@ public:
 
 	mc6854_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
 
-	auto out_irq_cb() { return m_out_irq_cb.bind(); }
-	auto out_txd_cb() { return m_out_txd_cb.bind(); }
-	auto out_rts_cb() { return m_out_rts_cb.bind(); }
-	auto out_dtr_cb() { return m_out_dtr_cb.bind(); }
+	auto out_irq_cb()  { return m_out_irq_cb.bind(); }
+	auto out_rdsr_cb() { return m_out_rdsr_cb.bind(); }
+	auto out_tdsr_cb() { return m_out_tdsr_cb.bind(); }
+	auto out_txd_cb()  { return m_out_txd_cb.bind(); }
+	auto out_rts_cb()  { return m_out_rts_cb.bind(); }
+	auto out_dtr_cb()  { return m_out_dtr_cb.bind(); }
 
 	template <typename... T> void set_out_frame_callback(T &&... args) { m_out_frame_cb.set(std::forward<T>(args)...); }
 
@@ -58,6 +60,8 @@ private:
 
 	// internal state
 	devcb_write_line  m_out_irq_cb; /* interrupt request */
+	devcb_write_line  m_out_rdsr_cb; /* Rx fifo DMA request */
+	devcb_write_line  m_out_tdsr_cb; /* Tx fifo DMA request */
 
 	/* low-level, bit-based interface */
 	devcb_write_line  m_out_txd_cb; /* transmit bit */

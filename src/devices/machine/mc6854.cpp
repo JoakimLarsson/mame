@@ -131,6 +131,8 @@ DEFINE_DEVICE_TYPE(MC6854, mc6854_device, "mc6854", "Motorola MC6854 ADLC")
 mc6854_device::mc6854_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
 	device_t(mconfig, MC6854, tag, owner, clock),
 	m_out_irq_cb(*this),
+	m_out_rdsr_cb(*this),
+	m_out_tdsr_cb(*this),
 	m_out_txd_cb(*this),
 	m_out_frame_cb(*this),
 	m_out_rts_cb(*this),
@@ -172,6 +174,8 @@ mc6854_device::mc6854_device(const machine_config &mconfig, const char *tag, dev
 void mc6854_device::device_start()
 {
 	m_out_irq_cb.resolve_safe();
+	m_out_rdsr_cb.resolve_safe();
+	m_out_tdsr_cb.resolve_safe();
 	m_out_txd_cb.resolve();
 	m_out_frame_cb.resolve();
 	m_out_rts_cb.resolve_safe();
@@ -737,7 +741,7 @@ void mc6854_device::update_sr1( )
 	else
 		m_sr1 &= ~S2RQ;
 
-	/* update TRDA (always prioritized by CTS) */
+	/* update TDRA (always prioritized by CTS) */
 	if ( TRESET || ( m_sr1 & CTS ) )
 		m_sr1 &= ~TDRA;
 	else
@@ -768,6 +772,8 @@ void mc6854_device::update_sr1( )
 	}
 
 	m_out_irq_cb((m_sr1 & IRQ) ? ASSERT_LINE : CLEAR_LINE);
+	m_out_rdsr_cb((m_sr1 & RDA) ? ASSERT_LINE : CLEAR_LINE);
+	m_out_tdsr_cb((m_sr1 & TDRA) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -802,6 +808,7 @@ uint8_t mc6854_device::read(offs_t offset)
 		uint8_t data = rfifo_pop( );
 		LOG( "%f %s mc6854_r: get data $%02X\n",
 				machine().time().as_double(), machine().describe_context(), data );
+		m_out_rdsr_cb(CLEAR_LINE); // Deactive DMA request line regardless of mode
 		return data;
 	}
 

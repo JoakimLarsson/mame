@@ -2,7 +2,7 @@
 // copyright-holders: Joakim Larsson Edström
 /**********************************************************************
 
-  Motorola 6844 emulation. 
+  Motorola 6844 emulation.
 
  "MC6844 — Direct Memory Access Controller
 
@@ -12,21 +12,21 @@
 
   General Description
 
-  The MC6844 is operable in three modes: HALT Burst, Cycle Steal and TSC Steal. 
+  The MC6844 is operable in three modes: HALT Burst, Cycle Steal and TSC Steal.
   In the Burst Mode, the MPU is halted by the first transfer request (TxRQ) input and
-  is restarted when the Byte Count Register (BCR) is zero. Each data transfer is synchronized 
-  by a pulse input of TxRQ. In the Cycle Steal Mode, the MPU is halted by each TxRQ and 
-  is restarted after each one byte of data transferred. In the TSC Steal Mode, DMAC uses the 
+  is restarted when the Byte Count Register (BCR) is zero. Each data transfer is synchronized
+  by a pulse input of TxRQ. In the Cycle Steal Mode, the MPU is halted by each TxRQ and
+  is restarted after each one byte of data transferred. In the TSC Steal Mode, DMAC uses the
   three-state control function of the MPU to control the system bus. One byte of data is
   transferred during each DMA cycle.
 
-  The DMAC has four channels. A Priority Control Register determines which of the channels 
+  The DMAC has four channels. A Priority Control Register determines which of the channels
   is enabled. While data is being transferred on one channel, the other channels are inhibited.
-  When one channel completes transferring, the next will become valid for DMA transfer. The PCR 
-  also utilizes a Rotate Control bit. Priority of DMA transfer is normally fixed in sequential 
+  When one channel completes transferring, the next will become valid for DMA transfer. The PCR
+  also utilizes a Rotate Control bit. Priority of DMA transfer is normally fixed in sequential
   order. The highest priority is in #0 Channel and the lowest is in #3. When this bit is in high
-  level, channel priority is rotated such that the just-serviced channel has the lowest priority 
-  in the next DMA transfer."   
+  level, channel priority is rotated such that the just-serviced channel has the lowest priority
+  in the next DMA transfer."
 
   Source: https://en.wikipedia.org/wiki/File:Motorola_Microcomputer_Components_1978_pg13.jpg
 
@@ -70,7 +70,17 @@ DEFINE_DEVICE_TYPE(MC6844, mc6844_device, "mc6844", "MC6844 DMA")
 //-------------------------------------------------
 mc6844_device::mc6844_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, MC6844, tag, owner, clock)
+	, device_execute_interface(mconfig, *this)
 	, m_out_int_cb(*this)
+	, m_out_txak_cb(*this)
+	, m_out_drq1_cb(*this)
+	, m_out_drq2_cb(*this)
+	, m_in_memr_cb(*this)
+	, m_out_memw_cb(*this)
+	, m_in_ior_cb{ { *this },{ *this },{ *this },{ *this } }
+	, m_out_iow_cb{ { *this },{ *this },{ *this },{ *this } }
+	, m_state(STATE_S0)
+	, m_icount(0)
 {
 }
 
@@ -88,6 +98,9 @@ void mc6844_device::device_add_mconfig(machine_config &config)
 void mc6844_device::device_resolve_objects()
 {
 	m_out_int_cb.resolve_safe();
+	m_out_txak_cb.resolve_safe();
+	m_out_drq1_cb.resolve_safe();
+	m_out_drq2_cb.resolve_safe();
 }
 
 //-------------------------------------------------
@@ -96,6 +109,8 @@ void mc6844_device::device_resolve_objects()
 
 void mc6844_device::device_start()
 {
+	// set our instruction counter
+	set_icountptr(m_icount);
 }
 
 //-------------------------------------------------
@@ -104,6 +119,178 @@ void mc6844_device::device_start()
 
 void mc6844_device::device_reset()
 {
+	// reset the 6844
+	for (int i = 0; i < 4; i++)
+	{
+		m_m6844_channel[i].active = 0;
+		m_m6844_channel[i].control = 0x00;
+	}
+	m_m6844_priority = 0x00;
+	m_m6844_interrupt = 0x00;
+	m_m6844_chain = 0x00;
+	m_state = STATE_S0;
+}
+
+//-------------------------------------------------
+//  dma_request -
+//-------------------------------------------------
+
+void mc6844_device::dma_request(int channel, int state)
+{
+	LOG("MC6844 Channel %u DMA Request: %u\n", channel, state);
+
+	m_dreq[channel & 3] = state;
+
+	trigger(1);
+}
+
+//-------------------------------------------------
+//  execute_run -
+//-------------------------------------------------
+
+void mc6844_device::execute_run()
+{
+	do
+	{
+		switch (m_state)
+		{
+		case STATE_SI:  // IDLE state, will suspend until a DMA request comes through
+			{   //                    Hi ------> Lo
+				int const priorities[][4] = {{ 1, 2, 3, 0 },
+							   { 2, 3, 0, 1 },
+							   { 3, 0, 1, 2 },
+							   { 0, 1, 2, 3 }};
+
+				for (int prio = 0; prio < 4; prio++)
+				{
+					// Rotating or static channel prioritizations
+					int current_channel = priorities[((m_m6844_priority & 0x80) ? m_last_channel : 3) & 3][prio];
+
+					if (m_m6844_channel[current_channel].active == 1 && m_dreq[current_channel] == ASSERT_LINE)
+					{
+						m_current_channel = m_last_channel = current_channel;
+						m_state = STATE_S0;
+						break;
+					}
+				}
+			}
+			if(m_state == STATE_SI)
+			{
+				suspend_until_trigger(1, true);
+				m_icount = 0;
+			}
+			break;
+		case STATE_S0: // Wait for BCR != 0 and Tx EN == 1
+			if (m_m6844_channel[m_current_channel].active == 1 &&
+				m_m6844_channel[m_current_channel].counter != 0)
+			{
+				m_state = STATE_S1;
+			}
+			else
+			{
+				suspend_until_trigger(1, true);
+				m_icount = 0;
+			}
+			break;
+		case STATE_S1: // Wait for Tx RQ == 1
+			if (m_dreq[m_current_channel] == ASSERT_LINE)
+			{
+				m_state = STATE_S2;
+				switch(m_m6844_channel[m_current_channel].control & 0x06)
+				{
+				case 0x00: // Mode 2 - single-byte transfer HALT steal mode
+				case 0x02: // Mode 3 - block transfer mode
+					m_out_drq2_cb(ASSERT_LINE);
+					break;
+				case 0x04: // Mode 1 - single-byte transfer TSC steal mode
+					m_out_drq1_cb(ASSERT_LINE);
+					break;
+				default:
+					m_out_drq1_cb(CLEAR_LINE);
+					m_out_drq2_cb(CLEAR_LINE);
+					break;
+				}
+			}
+			else
+			{
+				suspend_until_trigger(1, true);
+				m_icount = 0;
+			}
+			break;
+		case STATE_S2: // Wait for DGRNT == 1
+			if (m_dgrnt == ASSERT_LINE && m_dreq[m_current_channel] == ASSERT_LINE)
+			{
+				m_out_txak_cb(m_current_channel);
+
+				if (m_m6844_channel[m_current_channel].active == 1)  //active dma transfer
+				{
+					if (!(m_m6844_channel[m_current_channel].control & 0x01))  // dma write to memory from device
+					{
+						uint8_t data = m_in_ior_cb[m_current_channel]();
+						m_out_memw_cb(m_m6844_channel[m_current_channel].address, data);
+					}
+					else // dma write to device from memory
+					{
+						uint8_t data = m_in_memr_cb(m_m6844_channel[m_current_channel].address);
+						m_out_iow_cb[m_current_channel](data);
+					}
+
+					if (m_m6844_channel[m_current_channel].control & 0x08)
+					{
+						m_m6844_channel[m_current_channel].address--;
+					}
+					else
+					{
+						m_m6844_channel[m_current_channel].address++;
+					}
+
+					m_m6844_channel[m_current_channel].counter--;
+
+					if (m_m6844_channel[m_current_channel].counter == 0)
+					{
+						m_out_drq1_cb(CLEAR_LINE);
+						m_out_drq2_cb(CLEAR_LINE);
+						m_m6844_channel[m_current_channel].control |= 0x80;
+						m6844_update_interrupt();
+						m_state = STATE_SI;
+					}
+					else
+					{
+						switch(m_m6844_channel[m_current_channel].control & 0x06)
+						{
+						case 0x00: // Mode 2 - single-byte transfer HALT steal mode
+							m_state = STATE_S1;
+							m_out_drq2_cb(CLEAR_LINE);
+							break;
+						case 0x02: // Mode 3 - block transfer mode
+							m_state = STATE_S2; // Just for clarity, we are still in STATE_S2
+							break;
+						case 0x04: // Mode 1 - single-byte transfer TSC steal mode
+							m_state = STATE_S1;
+							m_out_drq1_cb(CLEAR_LINE);
+							break;
+						default: // Undefined - needs verification on real hardware
+							m_state = STATE_SI;
+							m_out_drq1_cb(CLEAR_LINE);
+							m_out_drq2_cb(CLEAR_LINE);
+							break;
+						}
+					}
+				}
+			}
+			else
+			{
+				suspend_until_trigger(1, true);
+				m_icount = 0;
+			}
+			break;
+		default:
+			logerror("MC6844: bad state, please report error\n");
+			break;
+		}
+
+		m_icount--;
+	} while (m_icount > 0);
 }
 
 //**************************************************************************
@@ -111,7 +298,7 @@ void mc6844_device::device_reset()
 //**************************************************************************
 
 
-READ8_MEMBER( mc6844_device::m6844_r )
+uint8_t mc6844_device::read(offs_t offset)
 {
 	uint8_t result = 0;
 
@@ -190,7 +377,7 @@ READ8_MEMBER( mc6844_device::m6844_r )
 }
 
 
-WRITE8_MEMBER( mc6844_device::m6844_w )
+void mc6844_device::write(offs_t offset, uint8_t data)
 {
 	int i;
 
@@ -312,3 +499,42 @@ void mc6844_device::m6844_update_interrupt()
 		}
 	}
 }
+
+#if 0
+void m6844_device::m6844_dma_transfer(uint8_t channel)
+{
+	uint32_t offset;
+	//address_space &space = *m_banked_space;
+
+	offset = m_dmaf_high_address[channel] << 16;
+
+	if (m_m6844_channel[channel].active == 1)  //active dma transfer
+	{
+		if (!(m_m6844_channel[channel].control & 0x01))  // dma write to memory
+		{
+			uint8_t data = m_fdc->data_r();
+
+			//space.write_byte(m_m6844_channel[channel].address + offset, data);
+		}
+		else
+		{
+			uint8_t data = 0; //space.read_byte(m_m6844_channel[channel].address + offset); // FIX: callback to read from memory
+
+			m_fdc->data_w(data);
+		}
+
+		if (m_m6844_channel[channel].control & 0x08)
+			m_m6844_channel[channel].address--;
+		else
+			m_m6844_channel[channel].address++;
+
+		m_m6844_channel[channel].counter--;
+
+		if (m_m6844_channel[channel].counter == 0)    // dma transfer has finished
+		{
+			m_m6844_channel[channel].control |= 0x80; // set dend flag
+			m6844_update_interrupt();
+		}
+	}
+}
+#endif
