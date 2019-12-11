@@ -42,14 +42,18 @@
 //**************************************************************************
 #define LOG_SETUP   (1U << 1)
 #define LOG_INT     (1U << 2)
+#define LOG_STATE   (1U << 3)
+#define LOG_TFR     (1U << 4)
 
-#define VERBOSE (LOG_SETUP | LOG_INT)
-//#define LOG_OUTPUT_STREAM std::cout
+#define VERBOSE (LOG_GENERAL|LOG_SETUP | LOG_INT | LOG_STATE |LOG_TFR)
+#define LOG_OUTPUT_STREAM std::cout
 
 #include "logmacro.h"
 
 #define LOGSETUP(...) LOGMASKED(LOG_SETUP, __VA_ARGS__)
 #define LOGINT(...)   LOGMASKED(LOG_INT,   __VA_ARGS__)
+#define LOGSTATE(...) LOGMASKED(LOG_STATE, __VA_ARGS__)
+#define LOGTFR(...)   LOGMASKED(LOG_TFR,   __VA_ARGS__)
 
 #ifdef _MSC_VER
 #define FUNCNAME __func__
@@ -85,14 +89,6 @@ mc6844_device::mc6844_device(const machine_config &mconfig, const char *tag, dev
 }
 
 //-------------------------------------------------
-//  device_add_mconfig - device-specific machine
-//  configuration addiitons
-//-------------------------------------------------
-void mc6844_device::device_add_mconfig(machine_config &config)
-{
-}
-
-//-------------------------------------------------
 //  device_resolve_objects - device-specific setup
 //-------------------------------------------------
 void mc6844_device::device_resolve_objects()
@@ -101,6 +97,14 @@ void mc6844_device::device_resolve_objects()
 	m_out_txak_cb.resolve_safe();
 	m_out_drq1_cb.resolve_safe();
 	m_out_drq2_cb.resolve_safe();
+        m_in_memr_cb.resolve_safe(0);
+        m_out_memw_cb.resolve_safe();
+	
+        for(auto &cb : m_in_ior_cb)
+                cb.resolve_safe(0);
+        for(auto &cb : m_out_iow_cb)
+                cb.resolve_safe();
+
 }
 
 //-------------------------------------------------
@@ -128,7 +132,7 @@ void mc6844_device::device_reset()
 	m_m6844_priority = 0x00;
 	m_m6844_interrupt = 0x00;
 	m_m6844_chain = 0x00;
-	m_state = STATE_S0;
+	m_state = STATE_SI;
 }
 
 //-------------------------------------------------
@@ -141,6 +145,7 @@ void mc6844_device::dma_request(int channel, int state)
 
 	m_dreq[channel & 3] = state;
 
+	LOGSTATE("Trigger(1)\n");
 	trigger(1);
 }
 
@@ -161,6 +166,7 @@ void mc6844_device::execute_run()
 							   { 3, 0, 1, 2 },
 							   { 0, 1, 2, 3 }};
 
+				LOGSTATE("DMA state SI\n");
 				for (int prio = 0; prio < 4; prio++)
 				{
 					// Rotating or static channel prioritizations
@@ -176,11 +182,13 @@ void mc6844_device::execute_run()
 			}
 			if(m_state == STATE_SI)
 			{
+				LOGSTATE("Suspend in SI\n");
 				suspend_until_trigger(1, true);
 				m_icount = 0;
 			}
 			break;
 		case STATE_S0: // Wait for BCR != 0 and Tx EN == 1
+			LOGSTATE("DMA state S0\n");
 			if (m_m6844_channel[m_current_channel].active == 1 &&
 				m_m6844_channel[m_current_channel].counter != 0)
 			{
@@ -188,11 +196,13 @@ void mc6844_device::execute_run()
 			}
 			else
 			{
+				LOGSTATE("Suspend in S0\n");
 				suspend_until_trigger(1, true);
 				m_icount = 0;
 			}
 			break;
 		case STATE_S1: // Wait for Tx RQ == 1
+			LOGSTATE("DMA state S1\n");
 			if (m_dreq[m_current_channel] == ASSERT_LINE)
 			{
 				m_state = STATE_S2;
@@ -213,26 +223,32 @@ void mc6844_device::execute_run()
 			}
 			else
 			{
+				LOGSTATE("Suspend in S1\n");
 				suspend_until_trigger(1, true);
 				m_icount = 0;
 			}
 			break;
 		case STATE_S2: // Wait for DGRNT == 1
+			LOGSTATE("DMA state S2\n");
 			if (m_dgrnt == ASSERT_LINE && m_dreq[m_current_channel] == ASSERT_LINE)
 			{
 				m_out_txak_cb(m_current_channel);
 
 				if (m_m6844_channel[m_current_channel].active == 1)  //active dma transfer
 				{
-					if (!(m_m6844_channel[m_current_channel].control & 0x01))  // dma write to memory from device
+					if (!(m_m6844_channel[m_current_channel].control & 0x01))
 					{
+						//uint8_t data = 0x55;
 						uint8_t data = m_in_ior_cb[m_current_channel]();
+						LOGTFR("DMA%d from device to memory location %04x: <- %02x\n", m_current_channel, m_m6844_channel[m_current_channel].address, data );
 						m_out_memw_cb(m_m6844_channel[m_current_channel].address, data);
 					}
 					else // dma write to device from memory
 					{
-						uint8_t data = m_in_memr_cb(m_m6844_channel[m_current_channel].address);
-						m_out_iow_cb[m_current_channel](data);
+						uint8_t data = 0;
+						LOGTFR("DMA from memory location to device %04x: -> %02x\n", m_m6844_channel[m_current_channel].address, data );
+						//uint8_t data = m_in_memr_cb(m_m6844_channel[m_current_channel].address);
+						//m_out_iow_cb[m_current_channel](data);
 					}
 
 					if (m_m6844_channel[m_current_channel].control & 0x08)
@@ -258,18 +274,22 @@ void mc6844_device::execute_run()
 					{
 						switch(m_m6844_channel[m_current_channel].control & 0x06)
 						{
-						case 0x00: // Mode 2 - single-byte transfer HALT steal mode
+						case 0x00:
+							LOGTFR("Mode 2 - single-byte transfer HALT steal mode\n");
 							m_state = STATE_S1;
 							m_out_drq2_cb(CLEAR_LINE);
 							break;
-						case 0x02: // Mode 3 - block transfer mode
+						case 0x02:
+							LOGTFR("Mode 3 - block transfer mode\n");
 							m_state = STATE_S2; // Just for clarity, we are still in STATE_S2
 							break;
-						case 0x04: // Mode 1 - single-byte transfer TSC steal mode
+						case 0x04:
+							LOGTFR("Mode 1 - single-byte transfer TSC steal mode\n");
 							m_state = STATE_S1;
 							m_out_drq1_cb(CLEAR_LINE);
 							break;
 						default: // Undefined - needs verification on real hardware
+							logerror("MC6844: undefined transfer mode, clearing DMA request\n");
 							m_state = STATE_SI;
 							m_out_drq1_cb(CLEAR_LINE);
 							m_out_drq2_cb(CLEAR_LINE);
@@ -280,6 +300,7 @@ void mc6844_device::execute_run()
 			}
 			else
 			{
+				LOGSTATE("Suspend in S2\n");
 				suspend_until_trigger(1, true);
 				m_icount = 0;
 			}
@@ -380,7 +401,7 @@ uint8_t mc6844_device::read(offs_t offset)
 void mc6844_device::write(offs_t offset, uint8_t data)
 {
 	int i;
-
+	LOGSETUP("DMA write %02x: %02x\n", offset, data);
 	// switch off the offset we were given
 	switch (offset)
 	{
@@ -389,6 +410,7 @@ void mc6844_device::write(offs_t offset, uint8_t data)
 		case 0x04:
 		case 0x08:
 		case 0x0c:
+			LOGSETUP(" - upper address byte ch %d: %02x\n", offset / 4, data);
 			m_m6844_channel[offset / 4].address = (m_m6844_channel[offset / 4].address & 0xff) | (data << 8);
 			break;
 
@@ -397,6 +419,7 @@ void mc6844_device::write(offs_t offset, uint8_t data)
 		case 0x05:
 		case 0x09:
 		case 0x0d:
+			LOGSETUP(" - lower address byte ch %d: %02x\n", offset / 4, data);
 			m_m6844_channel[offset / 4].address = (m_m6844_channel[offset / 4].address & 0xff00) | (data & 0xff);
 			break;
 
@@ -405,6 +428,7 @@ void mc6844_device::write(offs_t offset, uint8_t data)
 		case 0x06:
 		case 0x0a:
 		case 0x0e:
+			LOGSETUP(" - upper counter byte ch %d: %02x\n", offset / 4, data);
 			m_m6844_channel[offset / 4].counter = (m_m6844_channel[offset / 4].counter & 0xff) | (data << 8);
 			break;
 
@@ -413,6 +437,7 @@ void mc6844_device::write(offs_t offset, uint8_t data)
 		case 0x07:
 		case 0x0b:
 		case 0x0f:
+			LOGSETUP(" - lower counter byte ch %d: %02x\n", offset / 4, data);
 			m_m6844_channel[offset / 4].counter = (m_m6844_channel[offset / 4].counter & 0xff00) | (data & 0xff);
 			break;
 
@@ -421,11 +446,13 @@ void mc6844_device::write(offs_t offset, uint8_t data)
 		case 0x11:
 		case 0x12:
 		case 0x13:
+			LOGSETUP(" - control byte ch %d: %02x\n", offset / 4, data);
 			m_m6844_channel[offset - 0x10].control = (m_m6844_channel[offset - 0x10].control & 0xc0) | (data & 0x3f);
 			break;
 
 		// priority control
 		case 0x14:
+			LOGSETUP(" - priority byte: %02x\n", data);
 			m_m6844_priority = data;
 
 			// update each channel
@@ -457,18 +484,22 @@ void mc6844_device::write(offs_t offset, uint8_t data)
 
 		// interrupt control
 		case 0x15:
+			LOGSETUP(" - interrupt control: %02x\n", data);
 			m_m6844_interrupt = (m_m6844_interrupt & 0x80) | (data & 0x7f);
 			m6844_update_interrupt();
 			break;
 
 		// chaining control
 		case 0x16:
+			LOGSETUP(" - chaining control: %02x\n", data);
 			m_m6844_chain = data;
 			break;
 
 		// 0x17-0x1f not used
 		default: break;
 	}
+	LOGSTATE("Trigger(1)\n");
+	trigger(1);
 }
 
 void mc6844_device::m6844_update_interrupt()
@@ -499,42 +530,3 @@ void mc6844_device::m6844_update_interrupt()
 		}
 	}
 }
-
-#if 0
-void m6844_device::m6844_dma_transfer(uint8_t channel)
-{
-	uint32_t offset;
-	//address_space &space = *m_banked_space;
-
-	offset = m_dmaf_high_address[channel] << 16;
-
-	if (m_m6844_channel[channel].active == 1)  //active dma transfer
-	{
-		if (!(m_m6844_channel[channel].control & 0x01))  // dma write to memory
-		{
-			uint8_t data = m_fdc->data_r();
-
-			//space.write_byte(m_m6844_channel[channel].address + offset, data);
-		}
-		else
-		{
-			uint8_t data = 0; //space.read_byte(m_m6844_channel[channel].address + offset); // FIX: callback to read from memory
-
-			m_fdc->data_w(data);
-		}
-
-		if (m_m6844_channel[channel].control & 0x08)
-			m_m6844_channel[channel].address--;
-		else
-			m_m6844_channel[channel].address++;
-
-		m_m6844_channel[channel].counter--;
-
-		if (m_m6844_channel[channel].counter == 0)    // dma transfer has finished
-		{
-			m_m6844_channel[channel].control |= 0x80; // set dend flag
-			m6844_update_interrupt();
-		}
-	}
-}
-#endif

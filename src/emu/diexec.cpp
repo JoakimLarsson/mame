@@ -17,7 +17,7 @@
 //  DEBUGGING
 //**************************************************************************
 
-#define VERBOSE 0
+#define VERBOSE 1
 
 #define LOG(x)  do { if (VERBOSE) m_execute->device().logerror x; } while (0)
 

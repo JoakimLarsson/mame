@@ -35,6 +35,7 @@ public:
 	/* interface to CPU via address/data bus*/
 	uint8_t read(offs_t offset);
 	void write(offs_t offset, uint8_t data);
+	uint8_t dma_r(){ return read(2); }
 
 	/* low-level, bit-based interface */
 	DECLARE_WRITE_LINE_MEMBER( set_rx );
@@ -54,6 +55,7 @@ protected:
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
+	bool receive_allowed() const;
 
 private:
 	static constexpr unsigned FIFO_SIZE = 3; // hardcoded size of the 6854 FIFO (this is a hardware limit)
@@ -91,6 +93,8 @@ private:
 	uint8_t  m_rones;             /* count '1 bits */
 	uint8_t  m_rsize;             /* bits in the shift register */
 	uint16_t m_rfifo[FIFO_SIZE];  /* X x 8-bit FIFO + full & addr marker bits */
+	bool     m_rxd;
+	bool     m_rxc;
 
 	/* frame-based interface*/
 	uint8_t  m_frame[MAX_FRAME_LENGTH];
@@ -136,6 +140,7 @@ DECLARE_DEVICE_TYPE(MC6854, mc6854_device)
    The frame-based interface is higher-level and faster.
    It passes bytes directly from one end to the other without bothering with
    the actual bit-encoding, synchronization, and CRC.
+
    Once completed, a frame is sent through out_frame. Aborted frames are not
    transmitted at all. No start flag, stop flag, or crc bits are transmitted.
    send_frame makes a frame available to the CPU through the 6854 (it may
