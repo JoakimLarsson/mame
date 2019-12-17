@@ -27,6 +27,7 @@ Dansk Datahistorisk Forening - http://datamuseum.dk/
 #include "machine/6821pia.h"
 #include "machine/mc6854.h"
 #include "machine/mc6844.h"
+#include "machine/pla.h"
 #include "video/mc6845.h"
 #include "screen.h"
 #include "machine/input_merger.h"
@@ -43,7 +44,7 @@ Dansk Datahistorisk Forening - http://datamuseum.dk/
 #define LOG_IRQ   (1U << 6)
 #define LOG_ADLC  (1U << 7)
 
-#define VERBOSE (LOG_MIC|LOG_ADLC|LOG_IRQ|LOG_DMA)
+#define VERBOSE (LOG_MIC|LOG_ADLC|LOG_IRQ|LOG_DMA|LOG_IO)
 #define LOG_OUTPUT_STREAM std::cout
 
 #include "logmacro.h"
@@ -55,6 +56,8 @@ Dansk Datahistorisk Forening - http://datamuseum.dk/
 #define LOGDMA(...)   LOGMASKED(LOG_DMA,   __VA_ARGS__)
 #define LOGIRQ(...)   LOGMASKED(LOG_IRQ,   __VA_ARGS__)
 #define LOGADLC(...)  LOGMASKED(LOG_ADLC,  __VA_ARGS__)
+
+#define PLA1_TAG "ic50"
 
 class alfaskop4110_state : public driver_device
 {
@@ -68,11 +71,13 @@ public:
 		, m_crtc(*this, "crtc")
 		, m_screen(*this, "screen")
 		, m_vram(*this, "vram")
+		, m_pla(*this, PLA1_TAG)
 		, m_chargen(*this, "chargen")
 		, m_tia_adlc(*this, "tia_adlc")
 		, m_tia_dma(*this, "tia_dma")
 		, m_irq(0)
-	{ }
+		, m_imsk(0)
+ 	{ }
 
 	void alfaskop4110(machine_config &config);
 private:
@@ -88,6 +93,7 @@ private:
 	required_device<mc6845_device> m_crtc;
 	required_device<screen_device> m_screen;
 	required_shared_ptr<uint8_t> m_vram;
+        required_device<pls100_device> m_pla;
 
 	/* Video controller */
 	required_region_ptr<uint8_t> m_chargen;
@@ -100,6 +106,7 @@ private:
 	/* Interrupt handling */
 	template <unsigned N> DECLARE_WRITE_LINE_MEMBER(irq_w);
 	uint8_t m_irq;
+	uint8_t m_imsk;
 
 	/* Debug stuff */
 	/* Timer */
@@ -186,19 +193,42 @@ void alfaskop4110_state::mem_map(address_map &map)
 	map(0xf7d0, 0xf7d3).mirror(0x04).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGDIA("DIA pia_r %04x: %02x\n", offset, 0); return m_dia_pia->read(offset & 3); }),
 					      NAME([this](offs_t offset, uint8_t data) { LOGDIA("DIA pia_w %04x: %02x\n", offset, data); m_dia_pia->write(offset & 3, data); }));
 	map(0xf7c4, 0xf7c7).mirror(0x00).lrw8(NAME([this](offs_t offset) -> uint8_t    { uint8_t tmp = m_mic_pia->read(offset & 3); LOGMIC("\nMIC pia_r %04x: %02x\n", offset, tmp); return tmp; }),
-					      NAME( [this](offs_t offset, uint8_t data) { LOGMIC("\nMIC pia_w %04x: %02x\n", offset, data); m_mic_pia->write(offset & 3, data); }));
+					      NAME([this](offs_t offset, uint8_t data) { LOGMIC("\nMIC pia_w %04x: %02x\n", offset, data); m_mic_pia->write(offset & 3, data); }));
 	map(0xf7c0, 0xf7c1).mirror(0x02).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("KBD acia_r %04x: %02x\n", offset, 0); return m_kbd_acia->read(offset & 1); }),
-					      NAME( [this](offs_t offset, uint8_t data) { LOGIO("KBD acia_w %04x: %02x\n", offset, data); m_kbd_acia->write(offset & 1, data); }));
+					      NAME([this](offs_t offset, uint8_t data) { LOGIO("KBD acia_w %04x: %02x\n", offset, data); m_kbd_acia->write(offset & 1, data); }));
 
 	map(0xf7fc, 0xf7fc).mirror(0x00).lr8(NAME([this](offs_t offset) -> uint8_t { LOGIO("Address Switch 0-7\n"); return 0; }));
-#if 1
+#if 0
 	map(0xf800, 0xffff).rom().region("roms", 0);
 #else
 	map(0xf800, 0xffe7).rom().region("roms", 0);
 
-	map(0xffe8, 0xfffd).rom().lr8(NAME([this](offs_t offset) -> uint8_t    { if (!machine().side_effects_disabled()) LOGIO("AM set %04x\n", offset); return 0;}));
+	// IRQ mask setting
+	map(0xffe8, 0xfff7).rom().lrw8(NAME([this](offs_t offset) -> uint8_t
+					    {
+					      if (!machine().side_effects_disabled())
+						LOGIO("AMSK get %04x\n", offset);
+					      m_imsk = offset & 7;
+					      return ((uint8_t *) memregion("roms")->base() + 0x7e8)[offset];
+					    }),
+				       NAME([this](offs_t offset, uint8_t data) { if (!machine().side_effects_disabled()) LOGIO("AMSK set %04x\n", offset); m_imsk = offset & 7; }));
 
-	map(0xfffe, 0xffff).rom().region("roms", 0x7fe);
+	// Address modification TODO: Do only modify MCU accesses, not for DMA
+	map(0xfff8, 0xfff9).rom().lrw8(NAME([this](offs_t offset) -> uint8_t
+					    {
+					      //uint16_t ploffs = (m_irq & 0xff) | ((m_imsk & 0x07) << 8) | 0x800 | (((0xfff8) & 0x1e) << 11);
+					      uint16_t ploffs = (m_irq & 0xff) | ((m_imsk & 0x07) << 8) | 0x000 | (0x18 << 11);
+					      //uint8_t tmp =  ((uint8_t *) memregion("roms")->base())[0x7e0 | offset | ((m_pla->read(ploffs) & 0xf0) >> 3)];
+					      uint8_t tmp =  ((uint8_t *) memregion("roms")->base() + 0x7f8)[offset];
+					      if (!machine().side_effects_disabled())
+					      {
+						LOGIO("AMOD read %04x: %02x\n", offset, tmp);
+						LOGIO("AMOD pla read %04x: %02x ==> %04x\n", ploffs, m_pla->read(ploffs), (0xffe0 | offset | ((m_pla->read(ploffs) & 0xf0) >> 3)));
+					      }
+					      return tmp; }),
+				       NAME([this](offs_t offset, uint8_t data) { if (!machine().side_effects_disabled()) LOGIO("AMOD write %04x\n", offset); })); // TODO: Check what a write does if anything
+
+	map(0xfffa, 0xffff).rom().region("roms", 0x7fa);
 #endif
 }
 
@@ -239,8 +269,8 @@ INPUT_PORTS_END
 /* Interrupt handling - vector address modifyer, irq prioritizer and irq mask */
 template <unsigned N> WRITE_LINE_MEMBER( alfaskop4110_state::irq_w )
 {
-	LOGIRQ("4110 IRQ %d: %d\n", N, state);
 	m_irq = (m_irq & ~(1 << N)) | ((state ? 1 : 0) << N);
+	LOGIRQ("4110 IRQ %d: %d ==> %02x\n", N, state, m_irq);
 	m_maincpu->set_input_line(M6800_IRQ_LINE, state);
 }
 
@@ -269,6 +299,57 @@ void alfaskop4110_state::alfaskop4110(machine_config &config)
 	M6800(config, m_maincpu, XTAL(19'170'000) / 18); // Verified from service manual
 	m_maincpu->set_addrmap(AS_PROGRAM, &alfaskop4110_state::mem_map);
 
+	/* Interrupt controller and address modifier PLA */
+	/*
+	 * 82S100 data sheet
+-----------------
+
+The 82S100 is a bipolar, fuse-link programmable logic array. It uses the
+standard AND/OR/invert architecture to directly implement custom 
+um-of-product logic equations.
+
+Each device consists of 16 dedicated inputs and 8 dedicated outputs. Each
+output is capable of being actively controlled by any or all of the 48
+product terms. The true, complement, or don't care condition of each of the
+16 inputs ANDed together comprise one P-Term. All 48 P-Terms are then OR-d
+to each output. The user must then only select which P-Terms will activate
+an output by disconnecting terms which do not affect the output. In addition,
+each output can be fused as active high or active low.
+
+The 82S100 is fully TTL compatible and includes chip-enable control for
+expansion of input variables and output inhibit. It features three state
+outputs.
+
+Field programmable Ni-Cr links
+16 inputs
+8 outputs
+48 product terms
+Commercial verion - N82S100 - 50ns max address access time
+Power dissipation - 600mW typ
+Input loading - 100uA max
+Chip enable input
+Three state outputs
+         *
+	 * 
+	 */
+/*                _____   _____
+       nc FE   1 |*    \_/     | 28  Vcc
+     IRQ7 I7   2 |             | 27  I8  mask 1
+     IRQ6 I6   3 |             | 26  I9  mask 2
+     IRQ5 I5   4 |             | 25  I10 mask 3
+     IRQ4 I4   5 |             | 24  I11 Address &== 1111 1111 111x xxxx
+     IRQ3 I3   6 |    82S100   | 23  I12 AI 1 A1
+     IRQ2 I2   7 |             | 22  I13 AI 2 A2
+     IRQ1 I1   8 |     IC50    | 21  I14 AI 3 A3
+     IRQ0 I0   9 |             | 20  I15 AI 4 A4
+       P4 F7  10 |  Interrupt  | 19  _CE
+  mask P3 F6  11 |  Controller | 18  F0   IRQ
+  mask P2 F5  12 |     PLA     | 17  F1   mask register
+  mask P1 F4  13 |             | 16  F2   interrupt latch
+         GND  14 |_____________| 15  F3   nc
+*/
+	PLS100(config, m_pla);
+ 
 	MC6845(config, m_crtc, XTAL(19'170'000) / 9);
 	m_crtc->set_screen("screen");
 	m_crtc->set_show_border_area(false);
@@ -360,8 +441,9 @@ void alfaskop4110_state::alfaskop4110(machine_config &config)
 	m_kbd_acia->irq_handler().set("irq3", FUNC(input_merger_device::in_w<3>));
 
 	MC6854(config, m_tia_adlc, XTAL(19'170'000) / 18); // TODO: attach IRQ by IRQ 7 through descrete interrupt prioritization instead
-	m_tia_adlc->out_irq_cb().set([this](bool state){ LOGDMA("TIA ADLC IRQ: %s\n", state == ASSERT_LINE ? "asserted" : "cleared"); m_maincpu->set_input_line(M6800_IRQ_LINE, state); });
-	//m_tia_adlc->out_irq_cb().set("irq7", FUNC(input_merger_device::in_w<7>));
+	//m_tia_adlc->out_irq_cb().set([this](bool state){ LOGDMA("TIA ADLC IRQ: %s\n", state == ASSERT_LINE ? "asserted" : "cleared"); m_maincpu->set_input_line(M6800_IRQ_LINE, state); });
+	//m_tia_adlc->out_irq_cb().set([this](bool state){ LOGDMA("TIA ADLC IRQ: %s\n", state == ASSERT_LINE ? "asserted" : "cleared"); m_maincpu->set_input_line(M6800_IRQ_LINE, state); });
+	m_tia_adlc->out_irq_cb().set("irq7", FUNC(input_merger_device::in_w<7>));
 	m_tia_adlc->out_rdsr_cb().set([this](bool state){ LOGDMA("TIA ADLC RDSR: %d\n", state); m_tia_dma->dreq_w<1>(state); });
 	m_tia_adlc->out_tdsr_cb().set([this](bool state){ LOGDMA("TIA ADLC TDSR: %d\n", state); m_tia_dma->dreq_w<0>(state); });
 
@@ -386,7 +468,8 @@ void alfaskop4110_state::alfaskop4110(machine_config &config)
 void alfaskop4110_state::machine_start()
 {
 	save_item(NAME(m_irq));
-	timer_set(attotime::from_msec(3000), TIMER_POLL_START);
+	save_item(NAME(m_imsk));
+	timer_set(attotime::from_msec(10000), TIMER_POLL_START);
 }
 
 
@@ -432,6 +515,36 @@ void alfaskop4110_state::device_timer(emu_timer &timer, device_timer_id id, int 
 void alfaskop4110_state::machine_reset()
 {
 	m_irq = 0x00;
+#if 0
+	uint32_t bits[256];
+	std::fill_n(bits, 256, 0);
+	for (int i = 0; i < 0x10000; i++)
+	{
+	  uint16_t data = (m_pla->read(i) & 0xff);
+		uint32_t mask = 0x00000001;
+		for (int j = 0; j < 16; j++)
+		{
+		  if (BIT(i, j))
+		    bits[data] |= mask;
+		  else
+		    bits[data] |= (mask << 1);
+		  mask <<= 2;
+		}
+	}
+	std::set<uint32_t> ubits(bits, bits + 256);
+	std::cout << "SIZE of PAL: " << ubits.size() << "\n";
+	for (auto p : ubits)
+	{
+	  uint32_t tmp = p;
+	  char symbol[] = {'-', 'H', 'L', '-'};
+	  for (int i = 30; i >= 0; i -= 2)
+	  {
+	    std::cout << symbol[(tmp >> i) & 0x03] << " ";
+	  }
+	  std::bitset<8> x(std::distance(bits, std::find(bits, bits + 256, p)));
+	  std::cout << ": " << std::hex << x << "\n";
+	}
+#endif
 }
 
 void alfaskop4120_state::alfaskop4120(machine_config &config)
@@ -460,6 +573,9 @@ ROM_START( alfaskop4110 ) // Display Unit
 	ROM_REGION( 0x800, "chargen", ROMREGION_ERASEFF )
 	ROM_LOAD( "e3405972067500.bin", 0x0000, 0x0400, CRC(fb12b549) SHA1(53783f62c5e51320a53e053fbcf8b3701d8a805f))
 	ROM_LOAD( "e3405972067600.bin", 0x0400, 0x0400, CRC(c7069d65) SHA1(587efcbee036d4c0c5b936cc5d7b1f97b6fe6dba))
+        ROM_REGION( 0xff, PLA1_TAG, 0 )
+	//ROM_LOAD( "dtc_a_e34062_0100_ic50_e3405970303601_ml.bin", 0x00, 0xf5, CRC(b37395f2) SHA1(a00dc77d4bef084c0ddceef618986d83c69b1d65) ) // Signetics_N82S100N.bin MAXLOADER format
+	ROM_LOAD( "dtc_a_e34062_0100_ic50_e3405970303601.bin", 0x00, 0xfa, CRC(16339b7a) SHA1(9b313a7526460dc9bcedfda25bece91c924f0ddc) ) // Signetics_N82S100N.bin DATAIO format
 ROM_END
 
 ROM_START( alfaskop4120 ) // Flexible Disk Unit
