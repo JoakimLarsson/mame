@@ -16,8 +16,8 @@
     MACROS
 ***************************************************************************/
 
-//#define VERBOSE 1
-//#define LOG_OUTPUT_STREAM std::cout
+#define VERBOSE 1
+#define LOG_OUTPUT_STREAM std::cout
 #include "logmacro.h"
 
 /***************************************************************************

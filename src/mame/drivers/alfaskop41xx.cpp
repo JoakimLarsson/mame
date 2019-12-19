@@ -34,7 +34,7 @@ Dansk Datahistorisk Forening - http://datamuseum.dk/
 #include "machine/output_latch.h"
 
 //#include "bus/rs232/rs232.h"
-//#include "machine/clock.h"
+#include "machine/clock.h"
 
 #define LOG_IO    (1U << 1)
 #define LOG_NVRAM (1U << 2)
@@ -43,9 +43,11 @@ Dansk Datahistorisk Forening - http://datamuseum.dk/
 #define LOG_DMA   (1U << 5)
 #define LOG_IRQ   (1U << 6)
 #define LOG_ADLC  (1U << 7)
+#define LOG_KBD   (1U << 8)
+#define LOG_AM    (1U << 9)
 
-//#define VERBOSE (LOG_MIC|LOG_ADLC|LOG_IRQ|LOG_DMA|LOG_IO)
-//#define LOG_OUTPUT_STREAM std::cout
+#define VERBOSE (LOG_IRQ|LOG_KBD)
+#define LOG_OUTPUT_STREAM std::cout
 
 #include "logmacro.h"
 
@@ -56,6 +58,8 @@ Dansk Datahistorisk Forening - http://datamuseum.dk/
 #define LOGDMA(...)   LOGMASKED(LOG_DMA,   __VA_ARGS__)
 #define LOGIRQ(...)   LOGMASKED(LOG_IRQ,   __VA_ARGS__)
 #define LOGADLC(...)  LOGMASKED(LOG_ADLC,  __VA_ARGS__)
+#define LOGKBD(...)   LOGMASKED(LOG_KBD,   __VA_ARGS__)
+#define LOGAM(...)    LOGMASKED(LOG_AM,    __VA_ARGS__)
 
 #define PLA1_TAG "ic50"
 
@@ -195,8 +199,8 @@ void alfaskop4110_state::mem_map(address_map &map)
 						  NAME([this](offs_t offset, uint8_t data) { LOGDIA("DIA pia_w %04x: %02x\n", offset, data); m_dia_pia->write(offset & 3, data); }));
 	map(0xf7c4, 0xf7c7).mirror(0x00).lrw8(NAME([this](offs_t offset) -> uint8_t    { uint8_t tmp = m_mic_pia->read(offset & 3); LOGMIC("\nMIC pia_r %04x: %02x\n", offset, tmp); return tmp; }),
 						  NAME([this](offs_t offset, uint8_t data) { LOGMIC("\nMIC pia_w %04x: %02x\n", offset, data); m_mic_pia->write(offset & 3, data); }));
-	map(0xf7c0, 0xf7c1).mirror(0x02).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGIO("KBD acia_r %04x: %02x\n", offset, 0); return m_kbd_acia->read(offset & 1); }),
-						  NAME([this](offs_t offset, uint8_t data) { LOGIO("KBD acia_w %04x: %02x\n", offset, data); m_kbd_acia->write(offset & 1, data); }));
+	map(0xf7c0, 0xf7c1).mirror(0x02).lrw8(NAME([this](offs_t offset) -> uint8_t    { LOGKBD("KBD acia_r %04x: %02x\n", offset, 0); return m_kbd_acia->read(offset & 1); }),
+						  NAME([this](offs_t offset, uint8_t data) { LOGKBD("KBD acia_w %04x: %02x\n", offset, data); m_kbd_acia->write(offset & 1, data); }));
 
 	map(0xf7fc, 0xf7fc).mirror(0x00).lr8(NAME([this](offs_t offset) -> uint8_t { LOGIO("Address Switch 0-7\n"); return 0; }));
 
@@ -205,13 +209,13 @@ void alfaskop4110_state::mem_map(address_map &map)
 	// IRQ mask setting
 	map(0xffe8, 0xfff7).rom().lrw8( NAME([this](offs_t offset) -> uint8_t
 				        {
-						if (!machine().side_effects_disabled())	LOGIO("AMSK read set %04x\n", offset >> 1);
+						if (!machine().side_effects_disabled())	LOGAM("AMSK read set %04x\n", offset >> 1);
 						m_imsk = (offset >> 1) & 7;
 						return ((uint8_t *) memregion("roms")->base() + 0x7e8)[offset];
 					}),
 					NAME([this](offs_t offset, uint8_t data)
 					{
-						if (!machine().side_effects_disabled()) LOGIO("AMSK write set %04x\n", offset);
+						if (!machine().side_effects_disabled()) LOGAM("AMSK write set %04x\n", offset);
 						m_imsk = (offset >> 1) & 7;
 					}));
 
@@ -222,13 +226,13 @@ void alfaskop4110_state::mem_map(address_map &map)
 						uint8_t tmp =  ((uint8_t *) memregion("roms")->base())[0x7e0 | offset | ((m_pla->read(ploffs) & 0xf0) >> 3)];
 						if (!machine().side_effects_disabled())
 						{
-							LOGIO("AMOD read %04x: %02x\n", offset, tmp);
-							LOGIO("AMOD pla read %04x: %02x ==> %04x\n", ploffs, m_pla->read(ploffs), (0xffe0 | offset | ((m_pla->read(ploffs) & 0xf0) >> 3)));
+							LOGAM("AMOD read %04x: %02x\n", offset, tmp);
+							LOGAM("AMOD pla read %04x: %02x ==> %04x\n", ploffs, m_pla->read(ploffs), (0xffe0 | offset | ((m_pla->read(ploffs) & 0xf0) >> 3)));
 						}
 						return tmp; }),
 					NAME([this](offs_t offset, uint8_t data) // TODO: Check what a write does if anything
 					{
-						if (!machine().side_effects_disabled()) LOGIO("AMOD write %04x\n", offset);
+						if (!machine().side_effects_disabled()) LOGAM("AMOD write %04x\n", offset);
 					}));
 
 	map(0xfffa, 0xffff).rom().region("roms", 0x7fa);
@@ -438,8 +442,12 @@ void alfaskop4110_state::alfaskop4110(machine_config &config)
 	m_dia_pia->readca1_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: CA1_r\n"); return 0;});
 	m_dia_pia->readca2_handler().set([this](offs_t offset) -> uint8_t { LOGDIA("DIA PIA: CA2_r\n"); return 0;});
 
-	ACIA6850(config, m_kbd_acia, 0);
-	//CLOCK(config, "acia_clock", ACIA_CLOCK).signal_handler().set(FUNC(alfaskop4110_state::write_acia_clock));
+	/* The ACIA RxC and TxC are fed from the systemclock divided through a by 14 dividing 74163, from the tech manual: 
+	   "A clock of 76 kHz is provided for the ACIA by the timing logic. ACIA divides this clock by 64 (Bit transfer rate 1188 Hz) and 
+	    synchronizes internally to received data. Furthermore ACIA may provide interrupt (at level 3) when transmit register is empty,
+	    receive register is full or an error has occured. */
+	ACIA6850(config, m_kbd_acia, XTAL(19'170'000) / 18);
+	CLOCK(config, "acia_clock", (XTAL(19'170'000) / 18) / 14 ).signal_handler().set([this](int state) { m_kbd_acia->write_txc(state); m_kbd_acia->write_rxc(state); });
 	m_kbd_acia->irq_handler().set("irq3", FUNC(input_merger_device::in_w<3>));
 
 	MC6854(config, m_tia_adlc, XTAL(19'170'000) / 18); // TODO: attach IRQ by IRQ 7 through descrete interrupt prioritization instead
@@ -472,6 +480,10 @@ void alfaskop4110_state::machine_start()
 	save_item(NAME(m_irq));
 	save_item(NAME(m_imsk));
 	timer_set(attotime::from_msec(5000), TIMER_POLL_START);
+
+	// Hard wired inputs
+	m_kbd_acia->write_cts(0);
+	m_kbd_acia->write_dcd(0);
 }
 
 void alfaskop4110_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
