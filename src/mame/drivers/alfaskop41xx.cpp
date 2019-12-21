@@ -32,6 +32,7 @@ Dansk Datahistorisk Forening - http://datamuseum.dk/
 #include "screen.h"
 #include "machine/input_merger.h"
 #include "machine/output_latch.h"
+#include "machine/alfaskop_s41_kb.h"
 
 //#include "bus/rs232/rs232.h"
 #include "machine/clock.h"
@@ -76,6 +77,7 @@ public:
 		, m_screen(*this, "screen")
 		, m_vram(*this, "vram")
 		, m_pla(*this, PLA1_TAG)
+		, m_kbd(*this, "keyboard")
 		, m_chargen(*this, "chargen")
 		, m_tia_adlc(*this, "tia_adlc")
 		, m_tia_dma(*this, "tia_dma")
@@ -98,6 +100,7 @@ private:
 	required_device<screen_device> m_screen;
 	required_shared_ptr<uint8_t> m_vram;
 	required_device<pls100_device> m_pla;
+	required_device<alfaskop_s41_keyboard_device> m_kbd;
 
 	/* Video controller */
 	required_region_ptr<uint8_t> m_chargen;
@@ -305,6 +308,9 @@ void alfaskop4110_state::alfaskop4110(machine_config &config)
 	M6800(config, m_maincpu, XTAL(19'170'000) / 18); // Verified from service manual
 	m_maincpu->set_addrmap(AS_PROGRAM, &alfaskop4110_state::mem_map);
 
+	// TTL-level serial keyboard callback
+	ALFASKOP_S41_KB(config, m_kbd);
+
 	/* Interrupt controller and address modifier PLA */
 	/*
 	 * 82S100 data sheet
@@ -404,7 +410,7 @@ void alfaskop4110_state::alfaskop4110(machine_config &config)
 	m_mic_pia->writepa_handler().set([this](offs_t offset, uint8_t data)
 					 {
 						LOGMIC("->MIC PIA: Port A write %02x\n", data);
-						LOGMIC(" PA1 - KBD reset %s\n", BIT(data, 1) ? "active" : "inactive");
+						LOGKBD(" PA1 - KBD reset %s\n", BIT(data, 1) ? "active" : "inactive");
 						LOGMIC(" PA5 - Int out %s\n", BIT(data, 5) ? "enabled": "disabled");
 						LOGMIC(" PA6 - I4 latch %s\n", BIT(data, 6) ? "enabled": "disabled");
 					 });
@@ -557,7 +563,7 @@ ROM_START( alfaskop4110 ) // Display Unit
 	ROM_REGION( 0x800, "chargen", ROMREGION_ERASEFF )
 	ROM_LOAD( "e3405972067500.bin", 0x0000, 0x0400, CRC(fb12b549) SHA1(53783f62c5e51320a53e053fbcf8b3701d8a805f))
 	ROM_LOAD( "e3405972067600.bin", 0x0400, 0x0400, CRC(c7069d65) SHA1(587efcbee036d4c0c5b936cc5d7b1f97b6fe6dba))
-		ROM_REGION( 0xff, PLA1_TAG, 0 )
+	ROM_REGION( 0xff, PLA1_TAG, 0 )
 	//ROM_LOAD( "dtc_a_e34062_0100_ic50_e3405970303601_ml.bin", 0x00, 0xf5, CRC(b37395f2) SHA1(a00dc77d4bef084c0ddceef618986d83c69b1d65) ) // Signetics_N82S100N.bin MAXLOADER format
 	ROM_LOAD( "dtc_a_e34062_0100_ic50_e3405970303601.bin", 0x00, 0xfa, CRC(16339b7a) SHA1(9b313a7526460dc9bcedfda25bece91c924f0ddc) ) // Signetics_N82S100N.bin DATAIO format
 ROM_END
