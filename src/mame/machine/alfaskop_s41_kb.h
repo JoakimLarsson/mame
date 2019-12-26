@@ -23,7 +23,6 @@ public:
 	DECLARE_WRITE_LINE_MEMBER(rst_line_w);
 
 protected:
-	virtual void machine_start() override;
 	virtual void device_start() override;
 	virtual void device_add_mconfig(machine_config &config) override;
 	virtual ioport_constructor device_input_ports() const override;
