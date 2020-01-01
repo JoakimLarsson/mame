@@ -6,6 +6,7 @@
 #pragma once
 
 #include "cpu/m6800/m6800.h"
+#include "machine/mc6846.h"
 
 DECLARE_DEVICE_TYPE(ALFASKOP_S41_KB, alfaskop_s41_keyboard_device)
 
@@ -27,9 +28,9 @@ protected:
 	virtual void device_add_mconfig(machine_config &config) override;
 	virtual ioport_constructor device_input_ports() const override;
 	virtual tiny_rom_entry const *device_rom_region() const override;
-	uint8_t *m_adrom;
 
 	required_device<m6802_cpu_device> m_mcu;
+        required_device<mc6846_device> m_mc6846;
 	required_ioport_array<6>       m_rows;
 	devcb_write_line               m_txd_cb; // Callback for KBD-> S41
 	devcb_write8                   m_leds_cb; // Callback for all 8 leds -> layout

@@ -41,8 +41,9 @@
 #define LOG_LEDS    (1U <<  5)
 #define LOG_ROM     (1U <<  6)
 #define LOG_ADEC    (1U <<  7)
+#define LOG_IO      (1U <<  8)
 
-#define VERBOSE (LOG_GENERAL)
+#define VERBOSE (LOG_GENERAL|LOG_IO)
 #define LOG_OUTPUT_STREAM std::cout
 
 #include "logmacro.h"
@@ -51,9 +52,10 @@
 #define LOGRST(...)   LOGMASKED(LOG_RESET, __VA_ARGS__)
 #define LOGBITS(...)  LOGMASKED(LOG_BITS,  __VA_ARGS__)
 #define LOGUI(...)    LOGMASKED(LOG_UI,    __VA_ARGS__)
-#define LOGLEDS(...)  LOGMASKED(LOG_LEDS,  __VA_ARGS__)
-#define LOGROM(...)   LOGMASKED(LOG_ROM,   __VA_ARGS__)
-#define LOGADEC(...)  LOGMASKED(LOG_ADEC,  __VA_ARGS__)
+#define LOGLEDS(...)  if (!machine().side_effects_disabled()) LOGMASKED(LOG_LEDS,  __VA_ARGS__)
+#define LOGROM(...)   if (!machine().side_effects_disabled()) LOGMASKED(LOG_ROM,   __VA_ARGS__)
+#define LOGADEC(...)  if (!machine().side_effects_disabled()) LOGMASKED(LOG_ADEC,  __VA_ARGS__)
+#define LOGIO(...)    if (!machine().side_effects_disabled()) LOGMASKED(LOG_IO,    __VA_ARGS__)
 
 //**************************************************************************
 //  MACROS / CONSTANTS
@@ -208,7 +210,8 @@ alfaskop_s41_keyboard_device::alfaskop_s41_keyboard_device(
 		uint32_t clock)
 	: device_t(mconfig, ALFASKOP_S41_KB, tag, owner, clock)
 	, m_mcu(*this, M6800_TAG)
-	, m_rows(*this, "P1%u", 0)
+	, m_mc6846(*this, "mc6846")
+ 	, m_rows(*this, "P1%u", 0)
 	, m_txd_cb(*this)
 	, m_leds_cb(*this)
 	, m_rxd_high(true)
@@ -259,9 +262,6 @@ void alfaskop_s41_keyboard_device::device_start()
 	m_rxd_high = true;
 	m_txd_high = true;
 	m_col_select = 0;
-
-	m_adrom = (uint8_t*)(memregion ("ad_rom")->base ());
-	for (int i = 0; i < 0x20; i++) {printf("%02x ", m_adrom[i]);} printf("\n");
 }
 
 
@@ -274,6 +274,8 @@ void alfaskop_s41_keyboard_device::device_add_mconfig(machine_config &config)
 {
 	M6802(config, m_mcu, XTAL(3'579'545)); // Crystal verified from schematics
 	m_mcu->set_addrmap(AS_PROGRAM, &alfaskop_s41_keyboard_device::alfaskop_s41_kb_mem);
+	
+        MC6846(config, m_mc6846, XTAL(3'579'545) / 4); // Driven by E from 6802 == XTAL / 4
 }
 
 //-------------------------------------------------
@@ -292,29 +294,82 @@ ioport_constructor alfaskop_s41_keyboard_device::device_input_ports() const
 void alfaskop_s41_keyboard_device::alfaskop_s41_kb_mem(address_map &map)
 {
 	map(0x0000, 0x007f).ram(); // Internal RAM
-#if 0
-	map(0x0080, 0xffff).lrw8(NAME([this](offs_t offset) -> uint8_t
+	/* A 32 byte decoder ROM connects A0-A4 to A11, A12, A13, A15 and to an external port pin, A14 is not decoded!
+	 * c3 c3 c3 c3 c3 c3 c3 c3 c3 c3 c3 c3 c3 c3 c3 c3 - if external port pin is low
+	 * c3 c3 c3 c3 c5 c6 cb c3 d3 c3 c3 c3 c3 c3 43 f3 - if external port pin is high - normal operation
+	 *
+	 * Decoder rom byte bits as follows
+	 * 0 - 0x01 Start scanning
+	 * 1 - 0x02 read col
+         * 2 - 0x04 shift col clock
+	 * 3 - 0x08 set lamp data
+	 * 4 - 0x10 CS1 mc6846 I/O access - active low
+	 * 5 - 0x20 CS0 mc6846 ROM access - active high
+	 * 6 - 0x40 n/c?
+	 * 7 - 0x80 to KBX
+	 * 
+	 * F3 <- 0x0f <- 1-11 1 == b800-bfff, f800-ffff // 1111 0011 MC6846 Internal ROM access (CS0)
+	 * 43 <- 0x0e <- 1-11 0 == b000-b7ff, f000-f7ff // 0100 0011 
+	 * c3 <- 0x0d <- 1-10 1 == a800-afff, e800-efff // 1100 0011
+	 * c3 <- 0x0c <- 1-10 0 == a000-a7ff, e000-e7ff // 1100 0011
+	 * c3 <- 0x0b <- 1-01 1 == 9800-9fff, d800-dfff // 1100 0011
+	 * c3 <- 0x0a <- 1-01 0 == 9000-97ff, d000-d7ff // 1100 0011
+	 * c3 <- 0x09 <- 1-00 1 == 8800-8fff, c800-cfff // 1100 0011
+	 * d3 <- 0x08 <- 1-00 0 == 8000-87ff, c000-c7ff // 1101 0011 MC6846 Internal I/O access (CS1)
+
+	 * c3 <- 0x07 <- 0-11 1 == 3800-3fff, 7800-7fff // 1100 0011
+	 * cb <- 0x06 <- 0-11 0 == 3000-37ff, 7000-77ff // 1100 1011 Set lamp data
+	 * c6 <- 0x05 <- 0-10 1 == 2800-2fff, 6800-6fff // 1100 0110 start scan
+	 * c5 <- 0x04 <- 0-10 0 == 2000-27ff, 6000-67ff // 1100 0101 read col
+	 * c3 <- 0x03 <- 0-01 1 == 1800-1fff, 5800-5fff // 1100 0011 
+	 * c3 <- 0x02 <- 0-01 0 == 1000-17ff, 5000-57ff // 1100 0011
+	 * c3 <- 0x01 <- 0-00 1 == 0800-0fff, 4800-4fff // 1100 0011
+	 * c3 <- 0x00 <- 0-00 0 == 0000-07ff, 4000-47ff // 1100 0011
+	 */
+	map(0x0080, 0xffff).lrw8(NAME([this](address_space &space, offs_t offset) -> uint8_t
 				 {
 				        uint16_t addr = offset + 0x80;
-					uint8_t index = (((addr & 0x0000) | ((addr & 0x3800) << 1)) >> 12) & 0x000f;
-				 	uint8_t rom = memregion ("ad_rom")->base ()[index]; // m_adrom[index];
-					LOGADEC("address_r %04x -> index %02x: %02x\n", offset + 0x80, index, rom);
-					int8_t ret = 0;
-					if ((rom & 0x20) == 0) // CS0 == 0
+					uint8_t index = 0x10 | ((((addr & 0x8000) | ((addr & 0x3800) << 1)) >> 12) & 0x000f); // 0x10 | (((A15 | A13 | A12 | A11) >> 12)
+					uint8_t ret = 0;
+					LOGADEC("address_r %04x -> index %02x: %02x\n", offset + 0x80, index, memregion("ad_rom")->base ()[index]);
+					switch (memregion("ad_rom")->base ()[index])
 					{
-					  ret = memregion (M6800_TAG)->base ()[addr & 0x07ff];
-					  LOGROM(" - ROM %04x: %02x\n", addr & 0x7ff, ret);
+					case 0xf3:
+						ret = memregion(M6800_TAG)->base ()[addr & 0x07ff];
+						LOGROM(" - ROM %04x: %02x\n", addr & 0x7ff, ret);
+						break;
+					case 0xd3:
+						ret = m_mc6846->read(space, (offs_t)(addr & 0x07));
+						LOGIO(" - I/O read %04x, %02x\n", addr, ret);
+						break;
+					case 0xc3:
+						break; // Idle
+					default:
+						logerror(" - unmapped read access at %04x through %02x\n", addr, memregion("ad_rom")->base ()[index]);
 					}
-					else
-					  logerror(" - unmapped access at %04x\n", addr & 0x7ff);
 					return ret;
 				 }),
-				 NAME( [this](offs_t offset, uint8_t data)
+				 NAME( [this](address_space &space, offs_t offset, uint8_t data)
 				 {
-				 	LOG("address_w %04x: %02x\n", offset + 0x80, data);
+				        uint16_t addr = offset + 0x80;
+					uint8_t index = 0x10 | ((((addr & 0x8000) | ((addr & 0x3800) << 1)) >> 12) & 0x000f); // 0x10 | (((A15 | A13 | A12 | A11) >> 12)
+					LOGADEC("address_w %04x -> index %02x: %02x\n", offset + 0x80, index, memregion("ad_rom")->base ()[index]);
+					switch (memregion("ad_rom")->base ()[index])
+					{
+					case 0xd3:
+						m_mc6846->write(space, (offs_t)(addr & 0x07), data);
+						LOGIO(" - I/O write %04x, %02x\n", addr, data);
+						break;
+					case 0xcb:
+						LOGLEDS(" - I/O write LEDs %04x, %02x\n", addr, data);
+						break; // Leds
+					case 0xc3:
+						break; // Idle
+					default:
+						logerror(" - unmapped write access at %04x, %02x through %02x\n", addr, data, memregion("ad_rom")->base ()[index]);
+					}
 				 }));
-#endif
-	map(0xf800, 0xffff).rom().region(M6800_TAG,0);
+				  //	map(0xf800, 0xffff).rom().region(M6800_TAG,0);
 }
 
 //-------------------------------------------------
