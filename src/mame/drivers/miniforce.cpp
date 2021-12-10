@@ -100,7 +100,7 @@
 #include "bus/vme/vme_fccpu20.h"
 #include "bus/vme/vme_fcisio.h"
 #include "bus/vme/vme_fcscsi.h"
-#include "bus/vme/vme_fcwfc.h"
+#include "bus/vme/vme_fcwfc1.h"
 #include "bus/vme/vme_mzr8300.h"
 #include "bus/vme/vme_hcpu30.h"
 #include "machine/clock.h"

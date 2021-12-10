@@ -2,6 +2,7 @@
 // copyright-holders:Joakim Larsson Edstrom
 /***************************************************************************
  *
+ * WIP HLE device driver with aim to boot PDOS in the miniforce VME system
  *
  *       ||
  * ||    ||
@@ -103,25 +104,23 @@
  * ----------------------------------------------------------
  *
  *  TODO:
- *  - Checkout the ISA board based on similar/same WD chipsets
- *    - make or port decision for the different chips
- *    - HLE or MLE decision
- *  - add VME bus device
  *
  ****************************************************************************/
 
 #include "emu.h"
-#include "cpu/mcs48/mcs48.h"
-#include "vme_fcwfc.h"
+#include "vme_fcwfc1.h"
 
-//#define LOG_GENERAL (1U <<  0)
-#define LOG_SETUP   (1U <<  1)
+#define LOG_GENERAL   (1U << 0)
+#define LOG_SETUP     (1U << 1)
 
-//#define VERBOSE (LOG_GENERAL | LOG_SETUP )
-//#define LOG_OUTPUT_FUNC printf
+#define VERBOSE (LOG_SETUP  | LOG_GENERAL)
+#define LOG_OUTPUT_FUNC printf
 
+//#define LOGMASK(mask, ...)   do { if (VERBOSE & mask) logerror(__VA_ARGS__); } while (0)
+//#define LOGLEVEL(mask, level, ...) do { if ((VERBOSE & mask) >= level) logerror(__VA_ARGS__); } while (0)
 #include "logmacro.h"
 
+#define LOG(...)      LOGMASKED(LOG_GENERAL, __VA_ARGS__)
 #define LOGSETUP(...) LOGMASKED(LOG_SETUP, __VA_ARGS__)
 
 #ifdef _MSC_VER
@@ -137,40 +136,37 @@
 //	GLOBAL VARIABLES
 //**************************************************************************
 
-const device_type VME_FCWFC1 = device_creator<vme_fcwfc1_card_device>;
+//const device_type VME_FCWFC1 = device_creator<vme_fcwfc1_card_device>;
+DEFINE_DEVICE_TYPE(VME_FCWFC1, vme_fcwfc1_card_device, "fcwfc1", "Force Computer SYS68K/WFC-1 Board")
 
 //-------------------------------------------------
-//  ADDRESS_MAP( wd1015_io )
+//  device_add_mconfig - add device configuration
 //-------------------------------------------------
 
-static ADDRESS_MAP_START( wd1015_io, AS_IO, 8, vme_fcwfc1_card_device )
-#if 0 // from wdxt_gen.cpp TODO: Check schematics and hook up stuff accordingly
-	AM_RANGE(0x00, 0xff) AM_DEVREADWRITE(WD11C00_17_TAG, wd11c00_17_device, read, write)
-	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_READ(wd1015_t0_r)
-	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_READ(wd1015_t1_r)
-	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READWRITE(wd1015_p1_r, wd1015_p1_w)
-	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_READWRITE(wd1015_p2_r, wd1015_p2_w)
-#endif
-ADDRESS_MAP_END
-
-/*
- * Machine configuration
- */
-static MACHINE_CONFIG_FRAGMENT (fcwfc1)
-	MCFG_CPU_ADD(WD1015_TAG, I8049, 5000000)
-	MCFG_CPU_IO_MAP(wd1015_io)
-MACHINE_CONFIG_END
-
-//-------------------------------------------------
-//  machine_config_additions - device-specific
-//  machine configurations
-//-------------------------------------------------
-
-
-machine_config_constructor vme_fcwfc1_card_device::device_mconfig_additions() const
+void vme_fcwfc1_card_device::device_add_mconfig(machine_config &config)
 {
-	LOG("%s %s\n", tag(), FUNCNAME);
-	return MACHINE_CONFIG_NAME( fcwfc1 );
+  //  	LOGSETUP("%s %s\n", tag, FUNCNAME);
+}
+
+//**************************************************************************
+//  LIVE DEVICE
+//**************************************************************************
+vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock)
+	: device_t(mconfig, type, tag, owner, clock),
+	  device_vme_card_interface(mconfig, *this)
+{
+  //	LOGSETUP("%s\n", FUNCNAME);
+}
+
+vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: vme_fcwfc1_card_device(mconfig, VME_FCWFC1, tag, owner, clock)
+{
+	LOGSETUP("%s %s\n", tag, FUNCNAME);
+}
+
+void vme_fcwfc1_card_device::device_reset()
+{
+	LOGSETUP("%s %s\n", tag(), FUNCNAME);
 }
 
 /* ROM definitions 
@@ -184,61 +180,31 @@ ROM_END
 
 const tiny_rom_entry *vme_fcwfc1_card_device::device_rom_region() const
 {
-	LOG("%s\n", FUNCNAME);
+	LOGSETUP("%s\n", FUNCNAME);
 	return ROM_NAME( fcwfc1 );
-}
-
-//**************************************************************************
-//  LIVE DEVICE
-//**************************************************************************
-vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, uint32_t clock, const char *shortname, const char *source) :
-	device_t(mconfig, type, name, tag, owner, clock, shortname, source)
-	,device_vme_card_interface(mconfig, *this)
-	,m_maincpu (*this, WD1015_TAG)
-{
-	LOG("%s\n", FUNCNAME);
-}
-
-vme_fcwfc1_card_device::vme_fcwfc1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-	device_t(mconfig, VME_FCWFC1, "Force Computer SYS68K/WFC-1 Floppy and Winchester Controller Board", tag, owner, clock, "fcwfc1", __FILE__)
-	,device_vme_card_interface(mconfig, *this)
-	,m_maincpu (*this, WD1015_TAG)
-{
-	LOG("%s %s\n", tag, FUNCNAME);
 }
 
 /* Start it up */
 void vme_fcwfc1_card_device::device_start()
 {
-	LOG("%s\n", FUNCNAME);
-	set_vme_device();
+	LOGSETUP("%s\n", FUNCNAME);
 
 	uint32_t base = 0xFCB01000; // Miniforce default base + offset 0-f TODO: Make configurable
 
-	m_vme->install_device(vme_device::A24_SC, base      , base + 0x0f, // Dual ported RAM A24:D8
-						  read8_delegate(FUNC(vme_fcwfc1_card_device::not_implemented_r), this),
-						  write8_delegate(FUNC(vme_fcwfc1_card_device::not_implemented_w), this), 0xffffffff);
+	m_vme->install_device(vme_device::A24_SC, base, base + 0x0f,
+			      read8sm_delegate(*this, FUNC(vme_fcwfc1_card_device::read)),
+			      write8sm_delegate(*this, FUNC(vme_fcwfc1_card_device::write)),
+			      0xffffffff);
 }
 
-void vme_fcwfc1_card_device::device_reset()
+uint8_t vme_fcwfc1_card_device::read(offs_t offset)
 {
-	LOG("%s\n", FUNCNAME);
-}
-
-READ8_MEMBER (vme_fcwfc1_card_device::not_implemented_r){
-	static int been_here = 0;
-	if (!been_here++){
-		logerror(TODO);
-		LOG(TODO);
-	}
+	LOGSETUP("%s offset:%02x\n", FUNCNAME, offset);
 	return (uint8_t) 0;
 }
 
-WRITE8_MEMBER (vme_fcwfc1_card_device::not_implemented_w){
-	static int been_here = 0;
-	if (!been_here++){
-		logerror(TODO);
-		LOG(TODO);
-	}
+void vme_fcwfc1_card_device::write(offs_t offset, uint8_t data)
+{
+	LOGSETUP("%s offset:%02x data:%02x\n", FUNCNAME, offset, data);
 	return;
 }
