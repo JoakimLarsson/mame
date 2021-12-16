@@ -49,8 +49,12 @@ private:
 	void led_w(uint8_t data);
 
 	/* Dummy driver routines */
-	uint8_t not_implemented_r();
-	void not_implemented_w(uint8_t data);
+	uint8_t not_implemented_r(offs_t offset);
+	void not_implemented_w(offs_t offset, uint8_t data);
+
+	// access methods from VME bus
+	uint8_t read(offs_t offset);
+	void write(offs_t offset, uint8_t data);
 
 	uint8_t scsi_r(offs_t offset);
 	void scsi_w(offs_t offset, uint8_t data);

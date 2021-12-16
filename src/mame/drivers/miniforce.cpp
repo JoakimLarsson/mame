@@ -92,7 +92,7 @@
  * FCB01000-FCB0100F        VME A24 WFC-l card
  * FCB02000-FCB022FF        VME A24 ASCU-l/2 card (optional)
  * FF000000-FF07FFFF        EPROM Area 1
- * FF080000-FFFFFFFF        Local I/O devices
+ * FF800000-FFFFFFFF        Local I/O devices
  * --------------------------------------------------------------------------
  */
 #include "emu.h"
@@ -188,7 +188,8 @@ void miniforce_state::miniforce(machine_config &config)
 {
 //  ->set_addrmap(AS_PROGRAM, &miniforce_state::miniforce_mem);
 	VME(config, "vme", 0);
-	VME_SLOT(config, "slot1", miniforce_vme_cards, "fccpu21", 1, "vme");
+	//VME_SLOT(config, "slot1", miniforce_vme_cards, "fccpu21", 1, "vme");
+	VME_SLOT(config, "slot1", miniforce_vme_cards, nullptr, 1, "vme");
 	VME_SLOT(config, "slot2", miniforce_vme_cards, nullptr, 2, "vme");
 	VME_SLOT(config, "slot3", miniforce_vme_cards, nullptr, 3, "vme");
 	VME_SLOT(config, "slot4", miniforce_vme_cards, nullptr, 4, "vme");

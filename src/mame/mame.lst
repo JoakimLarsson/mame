@@ -14067,6 +14067,9 @@ fmtownsmx                       // FM-Towns II MX
 fmtownssj                       // FM-Towns II SJ
 fmtownsux                       // 1991.11 FM-Towns II UX
 
+@source:focus32.cpp
+focus32                         // VME cabinet Force Computers
+
 @source:fontwriter.cpp
 fw600                           // (c) Sharp
 fw700ger                        // (c) Sharp
@@ -23611,7 +23614,7 @@ mcom4_02                        //
 minicom                         //
 
 @source:miniforce.cpp
-miniforce                       // D26 cabinet test board
+miniforce                       // VME cabinet Force Computers
 
 @source:miniframe.cpp
 minifram

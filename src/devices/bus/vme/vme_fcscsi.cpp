@@ -333,6 +333,13 @@ void vme_fcscsi1_card_device::device_start()
 	/* Setup pointer to bootvector in ROM for bootvector handler bootvect_r */
 	m_sysrom = (uint16_t*)(memregion ("maincpu")->base () + 0xe00000);
 
+	uint32_t base = 0x00A02000; // ISCSI-1 default base for VME access
+
+	m_vme->install_device(vme_device::A24_SC, base, base + 0x01ffff,
+			      read8sm_delegate(*this, FUNC(vme_fcscsi1_card_device::not_implemented_r)),
+			      write8sm_delegate(*this, FUNC(vme_fcscsi1_card_device::not_implemented_w)),
+			      0xffffffff);
+
 #if 0 // TODO: Setup VME access handlers for shared memory area
 	uint32_t base = 0x00A00000;
 	m_vme->install_device(base + 0, base + 1, // Channel B - Data
@@ -341,6 +348,18 @@ void vme_fcscsi1_card_device::device_start()
 							 read8_delegate(FUNC(z80sio_device::cb_r),  subdevice<z80sio_device>("pit")), write8_delegate(FUNC(z80sio_device::cb_w), subdevice<z80sio_device>("pit")), 0x00ff);
 #endif
 
+}
+
+uint8_t vme_fcscsi1_card_device::read(offs_t offset)
+{
+	LOGSETUP("%s offset:%02x\n", FUNCNAME, offset);
+	return (uint8_t) 0;
+}
+
+void vme_fcscsi1_card_device::write(offs_t offset, uint8_t data)
+{
+	LOGSETUP("%s offset:%02x data:%02x\n", FUNCNAME, offset, data);
+	return;
 }
 
 void vme_fcscsi1_card_device::device_reset()
@@ -473,7 +492,7 @@ void vme_fcscsi1_card_device::scsi_w(offs_t offset, uint8_t data)
 	LOG("scsi W %02x <- %02x\n", offset, data);
 }
 
-uint8_t vme_fcscsi1_card_device::not_implemented_r(){
+uint8_t vme_fcscsi1_card_device::not_implemented_r(offs_t offset){
 	static int been_here = 0;
 	if (!been_here++){
 		logerror(TODO);
@@ -482,7 +501,7 @@ uint8_t vme_fcscsi1_card_device::not_implemented_r(){
 	return (uint8_t) 0;
 }
 
-void vme_fcscsi1_card_device::not_implemented_w(uint8_t data){
+void vme_fcscsi1_card_device::not_implemented_w(offs_t offset, uint8_t data){
 	static int been_here = 0;
 	if (!been_here++){
 		logerror(TODO);

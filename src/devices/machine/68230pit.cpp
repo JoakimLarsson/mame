@@ -31,7 +31,7 @@
 #define LOG_DR      0x10
 #define LOG_INT     0x20
 
-#define VERBOSE 0 //(LOG_SETUP | LOG_GENERAL | LOG_INT | LOG_BIT | LOG_DR)
+#define VERBOSE (LOG_SETUP | LOG_GENERAL) // | LOG_INT | LOG_BIT | LOG_DR)
 #include "logmacro.h"
 
 #define LOGSETUP(...) LOGMASKED(LOG_SETUP, __VA_ARGS__)

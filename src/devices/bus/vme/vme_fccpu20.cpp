@@ -233,8 +233,8 @@ void vme_fccpu20_device::cpu20_mem(address_map &map)
 	map(0x00000000, 0x00000007).rom().r(FUNC(vme_fccpu20_device::bootvect_r));   /* ROM mirror just during reset */
 	map(0x00000008, 0x0007ffff).ram(); /* Local SRAM */
 	map(0x00080000, 0x000fffff).ram(); /* SRAM-22 installed */
-	map(0xff040000, 0xff04ffff).ram();
 	map(0xff000000, 0xff00ffff).rom().region("roms", 0x0000);
+	map(0xff040000, 0xff04ffff).ram();
 	map(0xff800000, 0xff80001f).rw("mpcc", FUNC(mpcc68561_device::read), FUNC(mpcc68561_device::write));
 	map(0xff800200, 0xff80021f).rw("mpcc2", FUNC(mpcc68561_device::read), FUNC(mpcc68561_device::write));
 	map(0xff800600, 0xff80061f).rw("mpcc3", FUNC(mpcc68561_device::read), FUNC(mpcc68561_device::write));
