@@ -9,7 +9,7 @@
 
 DECLARE_DEVICE_TYPE(VME_MOCK, vme_mock_card_device)
 DECLARE_DEVICE_TYPE(VME_MOCK_FCAGC1, vme_mock_fcagc1_card_device)
-DECLARE_DEVICE_TYPE(VME_MOCK_FCASCU1, vme_mock_fcascu1_card_device)
+DECLARE_DEVICE_TYPE(VME_MOCK_FCASCU2, vme_mock_fcascu2_card_device)
 
 class vme_mock_device : public device_t, public device_vme_card_interface
 {
@@ -49,14 +49,14 @@ protected:
 	virtual void device_start() override;
 };
 
-// Force ACUGA-1 mockup
-class vme_mock_fcascu1_card_device: public vme_mock_device
+// Force ASCU-2 mockup
+class vme_mock_fcascu2_card_device: public vme_mock_device
 {
 public:
-	vme_mock_fcascu1_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	vme_mock_fcascu2_card_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	vme_mock_fcascu1_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
+	vme_mock_fcascu2_card_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
 	virtual void device_start() override;
 };

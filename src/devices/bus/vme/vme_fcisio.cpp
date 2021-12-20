@@ -409,14 +409,12 @@ void vme_fcisio1_card_device::device_start()
 	/* Setup pointer to bootvector in ROM for bootvector handler bootvect_r */
 	m_sysrom = (uint16_t*)(memregion ("maincpu")->base () + 0xf00000);
 
-#if 0 // TODO: Setup VME access handlers for shared memory area
-	uint32_t base = 0xFFFF5000;
-	m_vme->install_device(base + 0, base + 1, // Channel B - Data
-							 read8_delegate(FUNC(z80sio_device::db_r),  subdevice<z80sio_device>("pit")), write8_delegate(FUNC(z80sio_device::db_w), subdevice<z80sio_device>("pit")), 0x00ff);
-	m_vme->install_device(base + 2, base + 3, // Channel B - Control
-							 read8_delegate(FUNC(z80sio_device::cb_r),  subdevice<z80sio_device>("pit")), write8_delegate(FUNC(z80sio_device::cb_w), subdevice<z80sio_device>("pit")), 0x00ff);
-#endif
+	uint32_t base = 0xFCB00000; // ISIO-1 default base
 
+	m_vme->install_device(vme_device::A24_SC, base, base + 0x01ff,
+			      read8sm_delegate(*this, FUNC(vme_fcisio1_card_device::read)),
+			      write8sm_delegate(*this, FUNC(vme_fcisio1_card_device::write)),
+			      0xffffffff);
 }
 
 void vme_fcisio1_card_device::device_reset()
@@ -427,6 +425,18 @@ void vme_fcisio1_card_device::device_reset()
 /* Boot vector handler, the PCB hardwires the first 8 bytes from 0x80000 to 0x0 */
 uint16_t vme_fcisio1_card_device::bootvect_r(offs_t offset){
 	return m_sysrom [offset];
+}
+
+uint8_t vme_fcisio1_card_device::read(offs_t offset)
+{
+	LOGSETUP("%s offset:%02x\n", FUNCNAME, offset);
+	return (uint8_t) 0;
+}
+
+void vme_fcisio1_card_device::write(offs_t offset, uint8_t data)
+{
+	LOGSETUP("%s offset:%02x data:%02x\n", FUNCNAME, offset, data);
+	return;
 }
 
 uint8_t vme_fcisio1_card_device::not_implemented_r(){

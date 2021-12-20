@@ -14068,7 +14068,8 @@ fmtownssj                       // FM-Towns II SJ
 fmtownsux                       // 1991.11 FM-Towns II UX
 
 @source:focus32.cpp
-focus32                         // VME cabinet Force Computers
+focus32a                         // VME cabinet Force Computers PDOS System 21a
+focus32b                         // VME cabinet Force Computers PDOS System 21b
 
 @source:fontwriter.cpp
 fw600                           // (c) Sharp

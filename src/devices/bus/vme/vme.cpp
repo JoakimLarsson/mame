@@ -76,8 +76,9 @@
 
 #define LOG_GENERAL 0x01
 #define LOG_SETUP   0x02
+#define LOG_READ    0x04
 
-//#define VERBOSE (LOG_SETUP | LOG_GENERAL)
+#define VERBOSE (LOG_SETUP)
 
 #define LOG_OUTPUT_FUNC printf // logerror is not available here
 
@@ -85,6 +86,7 @@
 
 #define LOG(...)      LOGMASKED(LOG_GENERAL, __VA_ARGS__)
 #define LOGSETUP(...) LOGMASKED(LOG_SETUP,   __VA_ARGS__)
+#define LOGR(...)     LOGMASKED(LOG_READ,    __VA_ARGS__)
 
 #ifdef _MSC_VER
 #define FUNCNAME __func__
@@ -139,6 +141,18 @@ void vme_slot_device::device_resolve_objects()
 	}
 }
 
+uint32_t vme_device::read32(offs_t offset, uint32_t mask)
+{
+	LOGR("Reading %s offset %08x\n", tag(), offset);
+	return m_prgspace->read_dword(offset, mask);
+}
+
+void vme_device::write32(offs_t offset, uint32_t data, uint32_t mask)
+{
+  m_prgspace->write_dword(offset, data, mask);
+}
+
+#if 0
 //-------------------------------------------------
 //  P1 D8 read
 //-------------------------------------------------
@@ -160,18 +174,8 @@ void vme_slot_device::write8(offs_t offset, uint8_t data)
 	//  printf("%s %s\n", tag(), FUNCNAME);
 	//  if (m_card)     m_card->write8(offset, data);
 }
-
-#if 0 // Disabled until we know how to make a board driver also a slot device
-/* The following two slot collections be combined once we intriduce capabilities for each board */
-/* Usually a VME firmware supports only a few boards so it will have its own slot collection defined */
-// Controller capable boards that can go into slot1 ( or has an embedded VME bus )
-void vme_slot1(device_slot_interface &device)
-{
-//  device.option_add("mzr8105", VME_MZR8105);
-}
 #endif
 
-// All boards that can be non-controller boards, eg not driving the VME CLK etc
 void vme_slots(device_slot_interface &device)
 {
 	device.option_add("mzr8300", VME_MZR8300);
@@ -193,12 +197,12 @@ device_memory_interface::space_config_vector vme_device::memory_space_config() c
 	};
 }
 
-// set_use_owner_spaces - disables use of the memory interface and use the address spaces
+// use_owner_spaces - disables use of the memory interface and use the address spaces
 // of the owner instead. This is useful for VME buses where no address modifiers or arbitration is
 // being used and gives some gain in performance.
 void vme_device::use_owner_spaces()
 {
-	LOG("%s %s\n", tag(), FUNCNAME);
+	LOGSETUP("%s %s\n", tag(), FUNCNAME);
 
 	m_allocspaces = false;
 }
@@ -215,7 +219,7 @@ vme_device::vme_device(const machine_config &mconfig, device_type type, const ch
 	, m_allocspaces(true)
 	, m_cputag("maincpu")
 {
-	LOG("%s %s\n", tag, FUNCNAME);
+	LOGSETUP("%s %s\n", tag, FUNCNAME);
 }
 
 vme_device::~vme_device()
@@ -226,21 +230,21 @@ vme_device::~vme_device()
 
 void vme_device::device_start()
 {
-	LOG("%s %s %s\n", owner()->tag(), tag(), FUNCNAME);
+	LOGSETUP("%s %s %s\n", owner()->tag(), tag(), FUNCNAME);
 	if (m_allocspaces)
 	{
-		LOG(" - using my own memory spaces\n");
+		LOGSETUP(" - using VME memory spaces attached to %s\n", tag());
 		m_prgspace = &space(AS_PROGRAM);
 		m_prgwidth = m_prgspace->data_width();
-		LOG(" - Done at %d width\n", m_prgwidth);
+		LOGSETUP(" - Done at %d width\n", m_prgwidth);
 	}
 	else    // use host CPU's spaces directly
 	{
-		LOG(" - using owner memory spaces for %s\n", m_cputag);
+		LOGSETUP(" - using CPU %s memory spaces attached to %s\n", m_cputag, tag());
 		m_maincpu = owner()->subdevice<cpu_device>(m_cputag);
 		m_prgspace = &m_maincpu->space(AS_PROGRAM);
 		m_prgwidth = m_maincpu->space_config(AS_PROGRAM)->data_width();
-		LOG(" - Done at %d width\n", m_prgwidth);
+		LOGSETUP(" - Done at %d width\n", m_prgwidth);
 	}
 }
 
@@ -281,7 +285,7 @@ void vme_device::install_ub_handler(offs_t start, offs_t end, read8_delegate rha
 // D8 bit devices in A16, A24 and A32
 void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read8_delegate rhandler, write8_delegate whandler, uint32_t mask)
 {
-	LOG("%s %s AM%d D%02x\n", tag(), FUNCNAME, amod, m_prgwidth);
+	LOGSETUP("%s vme_device::install_device AM%d D%d %08x-%08x\n", tag(), amod, m_prgwidth, start, end);
 
 	LOG(" - width:%d\n", m_prgwidth);
 
@@ -300,7 +304,7 @@ void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read8
 		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, (uint16_t)(mask & 0x0000ffff));
 		break;
 	case 24:
-		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, (uint32_t)(mask & 0x00ffffff));
+		m_prgspace->install_readwrite_handler(start & 0x00ffffff, end & 0x00ffff, rhandler, whandler, (uint32_t)(mask & 0x00ffffff));
 		break;
 	case 32:
 		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, mask);
@@ -311,7 +315,7 @@ void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read8
 
 void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read8sm_delegate rhandler, write8sm_delegate whandler, uint32_t mask)
 {
-	LOG("%s %s AM%d D%02x\n", tag(), FUNCNAME, amod, m_prgwidth);
+	LOGSETUP("%s vme_device::install_device AM%d D%d %08x-%08x\n", tag(), amod, m_prgwidth, start, end);
 
 	LOG(" - width:%d\n", m_prgwidth);
 
@@ -330,7 +334,7 @@ void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read8
 		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, (uint16_t)(mask & 0x0000ffff));
 		break;
 	case 24:
-		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, (uint32_t)(mask & 0x00ffffff));
+		m_prgspace->install_readwrite_handler(start & 0x00ffffff, end & 0x00ffffff, rhandler, whandler, (uint32_t)(mask & 0x00ffffff));
 		break;
 	case 32:
 		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, mask);
@@ -341,7 +345,7 @@ void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read8
 
 void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read8smo_delegate rhandler, write8smo_delegate whandler, uint32_t mask)
 {
-	LOG("%s %s AM%d D%02x\n", tag(), FUNCNAME, amod, m_prgwidth);
+	LOGSETUP("%s vme_device::install_device AM%d D%d %08x-%08x\n", tag(), amod, m_prgwidth, start, end);
 
 	LOG(" - width:%d\n", m_prgwidth);
 
@@ -360,7 +364,7 @@ void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read8
 		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, (uint16_t)(mask & 0x0000ffff));
 		break;
 	case 24:
-		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, (uint32_t)(mask & 0x00ffffff));
+		m_prgspace->install_readwrite_handler(start & 0x00ffffff, end & 0x00ffffff, rhandler, whandler, (uint32_t)(mask & 0x00ffffff));
 		break;
 	case 32:
 		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, mask);
@@ -372,7 +376,7 @@ void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read8
 // D16 bit devices in A16, A24 and A32
 void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read16_delegate rhandler, write16_delegate whandler, uint32_t mask)
 {
-	LOG("%s %s AM%d D%02x\n", tag(), FUNCNAME, amod, m_prgwidth);
+	LOGSETUP("%s vme_device::install_device AM%d D%d %08x-%08x\n", tag(), amod, m_prgwidth, start, end);
 
 	LOG(" - width:%d\n", m_prgwidth);
 
@@ -388,7 +392,7 @@ void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read1
 	switch(m_prgwidth)
 	{
 	case 16:
-		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, (uint16_t)(mask & 0x0000ffff));
+		m_prgspace->install_readwrite_handler(start & 0x00ffffff, end & 0x00ffffff, rhandler, whandler, (uint16_t)(mask & 0x0000ffff));
 		break;
 	case 24:
 		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, (uint32_t)(mask & 0x00ffffff));
@@ -403,7 +407,7 @@ void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read1
 // D32 bit devices in A16, A24 and A32
 void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read32_delegate rhandler, write32_delegate whandler, uint32_t mask)
 {
-	LOG("%s %s AM%d D%02x\n", tag(), FUNCNAME, amod, m_prgwidth);
+	LOGSETUP("%s vme_device::install_device AM%d D%d %08x-%08x\n", tag(), amod, m_prgwidth, start, end);
 
 	LOG(" - width:%d\n", m_prgwidth);
 
@@ -422,7 +426,7 @@ void vme_device::install_device(vme_amod_t amod, offs_t start, offs_t end, read3
 		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, (uint16_t)(mask & 0x0000ffff));
 		break;
 	case 24:
-		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, (uint32_t)(mask & 0x00ffffff));
+		m_prgspace->install_readwrite_handler(start & 0x00ffffff, end & 0x00ffffff, rhandler, whandler, (uint32_t)(mask & 0x00ffffff));
 		break;
 	case 32:
 		m_prgspace->install_readwrite_handler(start, end, rhandler, whandler, mask);
@@ -455,7 +459,7 @@ void device_vme_card_interface::interface_post_start()
 	//  printf("*** %s %sfound\n", m_vme_tag, m_vme ? "" : "not ");
 	if (m_vme) m_vme->add_vme_card(this);
 }
-
+#if 0
 /* VME D8 accesses */
 uint8_t device_vme_card_interface::read8(offs_t offset)
 {
@@ -468,6 +472,7 @@ void device_vme_card_interface::write8(offs_t offset, uint8_t data)
 {
 	LOG("%s %s Offset:%08x\n", m_device->tag(), FUNCNAME, offset);
 }
+#endif
 
 //--------------- P2 connector below--------------------------
 /*

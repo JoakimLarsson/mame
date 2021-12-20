@@ -189,7 +189,7 @@ void vme_fcwfc1_card_device::device_start()
 {
 	LOGSETUP("%s\n", FUNCNAME);
 
-	uint32_t base = 0xFCB01000; // WFC-1 default base + offset 0-f TODO: Make configurable
+	uint32_t base = 0xFCB01000; // default base + offset 0-f TODO: Make configurable
 
 	m_vme->install_device(vme_device::A24_SC, base, base + 0x0f,
 			      read8sm_delegate(*this, FUNC(vme_fcwfc1_card_device::read)),

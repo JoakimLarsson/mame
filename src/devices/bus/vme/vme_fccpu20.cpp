@@ -195,14 +195,18 @@
 //#define LOG_GENERAL (1U <<  0)
 #define LOG_SETUP   (1U <<  1)
 #define LOG_INT     (1U <<  2)
+#define LOG_A24     (1U <<  3)
+#define LOG_A24R    (1U <<  4)
 
-//#define VERBOSE (LOG_GENERAL | LOG_SETUP | LOG_INT)
-//#define LOG_OUTPUT_FUNC printf
+#define VERBOSE (LOG_A24) // | LOG_GENERAL | LOG_SETUP | LOG_INT)
+#define LOG_OUTPUT_FUNC printf
 
 #include "logmacro.h"
 
 #define LOGSETUP(...) LOGMASKED(LOG_SETUP, __VA_ARGS__)
 #define LOGINT(...)   LOGMASKED(LOG_INT,   __VA_ARGS__)
+#define LOGA24(...)   LOGMASKED(LOG_A24,   __VA_ARGS__)
+#define LOGA24R(...)   LOGMASKED(LOG_A24R,   __VA_ARGS__)
 
 #ifdef _MSC_VER
 #define FUNCNAME __func__
@@ -233,6 +237,7 @@ void vme_fccpu20_device::cpu20_mem(address_map &map)
 	map(0x00000000, 0x00000007).rom().r(FUNC(vme_fccpu20_device::bootvect_r));   /* ROM mirror just during reset */
 	map(0x00000008, 0x0007ffff).ram(); /* Local SRAM */
 	map(0x00080000, 0x000fffff).ram(); /* SRAM-22 installed */
+	map(0xfc000000, 0xfcfeffff).rw(FUNC(vme_fccpu20_device::a24_r), FUNC(vme_fccpu20_device::a24_w)); // A24 VME memory space
 	map(0xff000000, 0xff00ffff).rom().region("roms", 0x0000);
 	map(0xff040000, 0xff04ffff).ram();
 	map(0xff800000, 0xff80001f).rw("mpcc", FUNC(mpcc68561_device::read), FUNC(mpcc68561_device::write));
@@ -505,6 +510,20 @@ void vme_fccpu20_device::bootvect_w(offs_t offset, uint32_t data, uint32_t mem_m
 	m_sysram[offset % std::size(m_sysram)] &= ~mem_mask;
 	m_sysram[offset % std::size(m_sysram)] |= (data & mem_mask);
 	m_sysrom = &m_sysram[0]; // redirect all upcoming accesses to masking RAM until reset.
+}
+
+/* A24 handler, the A24 memory space lives at the VME bus */
+uint32_t vme_fccpu20_device::a24_r(offs_t offset, uint32_t mask)
+{
+	uint32_t result = m_vme->read32(offset * 4, mask);
+  	LOGA24R("%s: %08x -> %08x\n", FUNCNAME, offset * 4, result);
+	return result;
+}
+
+void vme_fccpu20_device::a24_w(offs_t offset, uint32_t data, uint32_t mask)
+{
+	LOGA24("%s: %08x <- %08x:%08x\n", FUNCNAME, offset * 4, data, mask);
+	m_vme->write32(offset * 4, data, mask);
 }
 
 WRITE_LINE_MEMBER(vme_fccpu20_device::bim_irq_callback)

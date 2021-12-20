@@ -155,14 +155,16 @@
 #define LOG_GENERAL 0x01
 #define LOG_SETUP   0x02
 #define LOG_PRINTF  0x04
+#define LOG_READ    0x08
 
-#define VERBOSE 0 //(LOG_PRINTF | LOG_SETUP  | LOG_GENERAL)
+#define VERBOSE (LOG_PRINTF | LOG_SETUP) //  | LOG_GENERAL)
 
 #define LOGMASK(mask, ...)   do { if (VERBOSE & mask) logerror(__VA_ARGS__); } while (0)
 #define LOGLEVEL(mask, level, ...) do { if ((VERBOSE & mask) >= level) logerror(__VA_ARGS__); } while (0)
 
 #define LOG(...)      LOGMASK(LOG_GENERAL, __VA_ARGS__)
 #define LOGSETUP(...) LOGMASK(LOG_SETUP,   __VA_ARGS__)
+#define LOGR(...)     LOGMASK(LOG_READ,    __VA_ARGS__)
 
 #if VERBOSE & LOG_PRINTF
 #define logerror printf
@@ -328,37 +330,30 @@ vme_fcscsi1_card_device::vme_fcscsi1_card_device(const machine_config &mconfig, 
 /* Start it up */
 void vme_fcscsi1_card_device::device_start()
 {
-	LOG("%s\n", FUNCNAME);
+	LOGSETUP("%s\n", FUNCNAME);
 
 	/* Setup pointer to bootvector in ROM for bootvector handler bootvect_r */
 	m_sysrom = (uint16_t*)(memregion ("maincpu")->base () + 0xe00000);
 
-	uint32_t base = 0x00A02000; // ISCSI-1 default base for VME access
+	uint32_t base = 0x00A00000; // ISCSI-1 default base for VME access
 
 	m_vme->install_device(vme_device::A24_SC, base, base + 0x01ffff,
-			      read8sm_delegate(*this, FUNC(vme_fcscsi1_card_device::not_implemented_r)),
-			      write8sm_delegate(*this, FUNC(vme_fcscsi1_card_device::not_implemented_w)),
+			      read8sm_delegate(*this, FUNC(vme_fcscsi1_card_device::read8)),
+			      write8sm_delegate(*this, FUNC(vme_fcscsi1_card_device::write8)),
 			      0xffffffff);
-
-#if 0 // TODO: Setup VME access handlers for shared memory area
-	uint32_t base = 0x00A00000;
-	m_vme->install_device(base + 0, base + 1, // Channel B - Data
-							 read8_delegate(FUNC(z80sio_device::db_r),  subdevice<z80sio_device>("pit")), write8_delegate(FUNC(z80sio_device::db_w), subdevice<z80sio_device>("pit")), 0x00ff);
-	m_vme->install_device(base + 2, base + 3, // Channel B - Control
-							 read8_delegate(FUNC(z80sio_device::cb_r),  subdevice<z80sio_device>("pit")), write8_delegate(FUNC(z80sio_device::cb_w), subdevice<z80sio_device>("pit")), 0x00ff);
-#endif
-
 }
 
-uint8_t vme_fcscsi1_card_device::read(offs_t offset)
+uint8_t vme_fcscsi1_card_device::read8(offs_t offset)
 {
-	LOGSETUP("%s offset:%02x\n", FUNCNAME, offset);
-	return (uint8_t) 0;
+	uint8_t result =  m_maincpu->space(AS_PROGRAM).read_byte(offset);
+	LOGR("%s offset:%02x -> data%02x\n", FUNCNAME, offset, result);
+	return result;
 }
 
-void vme_fcscsi1_card_device::write(offs_t offset, uint8_t data)
+void vme_fcscsi1_card_device::write8(offs_t offset, uint8_t data)
 {
 	LOGSETUP("%s offset:%02x data:%02x\n", FUNCNAME, offset, data);
+	m_maincpu->space(AS_PROGRAM).write_byte(offset, data);
 	return;
 }
 

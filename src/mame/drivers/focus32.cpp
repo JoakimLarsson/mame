@@ -87,12 +87,12 @@
  *---------------------------
  * See fccpu30.cpp
  *
- * Misc links about Force Computers and this board:
+ * Misc links about Force Computers and this chassi:
  *-------------------------------------------------
  * http://bitsavers.org/pdf/forceComputers/
  *
  * Description, from datasheets etc
- * --------------------------------
+ * ------------------------------------------------
  * - Tower station for 32 bit VMEbus environments
  * - Two 6 slot motherboards for A32/D32 wide VMEbus (Pl,P2)
  * - 460W power supply to drive VMEbus and mass storage memory
@@ -132,36 +132,33 @@
  * 00100000-FAFFFFFF        VME A32 Memory if CPU-22 installed
  * FCA02000-FCA1FFFF        VME A24 ISCSI-l card
  * FCB00000-FCB001FF        VME A24 ISIO-1 First card
- * FCB02000-FCB022FF        VME A24 ASCU-l/2 card
+ * FCB02000-FCB022FF        VME A24 ASCU-2 card
  * FF000000-FF07FFFF        EPROM Area 1
  * FF800000-FFFFFFFF        Local I/O devices
  * --------------------------------------------------------------------------
  */
 #include "emu.h"
 #include "bus/vme/vme.h"
-#include "bus/vme/vme_mock.h"
 #include "bus/vme/vme_fccpu20.h"
 #include "bus/vme/vme_fcisio.h"
 #include "bus/vme/vme_fcscsi.h"
-//#include "bus/vme/vme_fcascu.h"
-//#include "bus/vme/vme_fcagc.h"
+#include "bus/vme/vme_mock.h"
+//#include "bus/vme/vme_fcascu.h" // Mocked for now
+//#include "bus/vme/vme_fcagc.h" // Mocked for now
 #include "machine/clock.h"
 
-#define LOG_GENERAL 0x01
-#define LOG_SETUP   0x02
-#define LOG_PRINTF  0x04
+#define LOG_GENERAL (1U <<  0)
+#define LOG_SETUP   (1U <<  1)
 
-#define VERBOSE 0 // (LOG_PRINTF | LOG_SETUP  | LOG_GENERAL)
+#define VERBOSE ( LOG_SETUP)// | LOG_GENERAL)
+//#define LOG_OUTPUT_FUNC printf
+#include "logmacro.h"
 
-#define LOGMASK(mask, ...)   do { if (VERBOSE & mask) logerror(__VA_ARGS__); } while (0)
-#define LOGLEVEL(mask, level, ...) do { if ((VERBOSE & mask) >= level) logerror(__VA_ARGS__); } while (0)
+#define LOGSETUP(...) LOGMASKED(LOG_SETUP,   __VA_ARGS__)
 
-#define LOG(...)      LOGMASK(LOG_GENERAL, __VA_ARGS__)
-#define LOGSETUP(...) LOGMASK(LOG_SETUP,   __VA_ARGS__)
-
-#if VERBOSE & LOG_PRINTF
-#define logerror printf
-#endif
+//**************************************************************************
+//  MACROS / CONSTANTS
+//**************************************************************************
 
 #ifdef _MSC_VER
 #define FUNCNAME __func__
@@ -174,28 +171,18 @@ class focus32_state : public driver_device
 public:
 	focus32_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag)
-	{
-	}
+		, m_vme(*this, "vmef32")
+	{ }
 
-	void focus32(machine_config &config);
+	void focus32a(machine_config &config);
+	void focus32b(machine_config &config);
 
 private:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	void focus32_mem(address_map &map);
+	required_device<vme_device> m_vme;
+	// virtual void machine_start () override { LOGSETUP("%s\n", FUNCNAME); }
+	// virtual void machine_reset() override { LOGSETUP("%s\n", FUNCNAME); }
+	// void focus32_mem(address_map &map);
 };
-
-/* Start it up */
-void focus32_state::machine_start()
-{
-	LOG("%s\n", FUNCNAME);
-}
-
-/* Start it up */
-void focus32_state::machine_reset()
-{
-	LOG("%s\n", FUNCNAME);
-}
 
 /* Input ports */
 static INPUT_PORTS_START (focus32)
@@ -207,33 +194,57 @@ static void focus32_vme_cards(device_slot_interface &device)
 	device.option_add("fccpu21b", VME_FCCPU21B);
 	device.option_add("fcisio1",  VME_FCISIO1);
 	device.option_add("fciscsi1", VME_FCSCSI1);
-	device.option_add("fcascu1",  VME_MOCK_FCASCU1);
+	device.option_add("fcascu2",  VME_MOCK_FCASCU2);
 	device.option_add("fcagc1",   VME_MOCK_FCAGC1);
 }
 
 /*
- * Machine configuration
+ * Machine configurations
  */
-void focus32_state::focus32(machine_config &config)
+void focus32_state::focus32a(machine_config &config)
 {
-	VME(config, "vme", 0);
-	VME_SLOT(config, "slot1",  focus32_vme_cards, "fcascu1",  1, "vme");
-	VME_SLOT(config, "slot2",  focus32_vme_cards, "fcisio1",  2, "vme");
-	VME_SLOT(config, "slot3",  focus32_vme_cards, "fciscsi1", 3, "vme");
-	VME_SLOT(config, "slot4",  focus32_vme_cards, "fccpu21a", 4, "vme");
-	VME_SLOT(config, "slot5",  focus32_vme_cards, nullptr,    5, "vme");
-	VME_SLOT(config, "slot6",  focus32_vme_cards, nullptr,    6, "vme");
-	VME_SLOT(config, "slot7",  focus32_vme_cards, nullptr,    7, "vme");
-	VME_SLOT(config, "slot8",  focus32_vme_cards, nullptr,    8, "vme");
-	VME_SLOT(config, "slot9",  focus32_vme_cards, nullptr,    9, "vme");
-	VME_SLOT(config, "slot10", focus32_vme_cards, "fcagc1",  10, "vme");
-	VME_SLOT(config, "slot11", focus32_vme_cards, nullptr,   11, "vme");
-	VME_SLOT(config, "slot12", focus32_vme_cards, nullptr,   12, "vme");
+	VME(config, m_vme, 0);
+
+	VME_SLOT(config, "slot1",  focus32_vme_cards, "fcascu2",  1, m_vme); // System controller
+	VME_SLOT(config, "slot2",  focus32_vme_cards, "fcisio1",  2, m_vme); // RS232 1-8
+	VME_SLOT(config, "slot3",  focus32_vme_cards, "fciscsi1", 3, m_vme); // Storage controller
+	VME_SLOT(config, "slot4",  focus32_vme_cards, "fccpu21a", 4, m_vme); // 20MHz 68020 CPU + two slots with RAM
+	VME_SLOT(config, "slot5",  focus32_vme_cards, nullptr,    5, m_vme); //  RAM here
+	VME_SLOT(config, "slot6",  focus32_vme_cards, nullptr,    6, m_vme); // and here
+	VME_SLOT(config, "slot7",  focus32_vme_cards, nullptr,    7, m_vme);
+	VME_SLOT(config, "slot8",  focus32_vme_cards, nullptr,    8, m_vme);
+	VME_SLOT(config, "slot9",  focus32_vme_cards, nullptr,    9, m_vme);
+	VME_SLOT(config, "slot10", focus32_vme_cards, "fcagc1",  10, m_vme); // optional AGC-1 goes here
+	VME_SLOT(config, "slot11", focus32_vme_cards, nullptr,   11, m_vme); //   for two slots
+	VME_SLOT(config, "slot12", focus32_vme_cards, nullptr,   12, m_vme); // optional ISIO-1 goes here for RS232 9-16
 }
 
-ROM_START(focus32)
-ROM_END
+// Focus 32 PDOS System 21B, like PDOS System 21A but a faster CPU
+void focus32_state::focus32b(machine_config &config)
+{
+	VME(config, m_vme, 0);
+	VME_SLOT(config, "slot1",  focus32_vme_cards, "fcascu2",  1, m_vme);
+	VME_SLOT(config, "slot2",  focus32_vme_cards, "fcisio1",  2, m_vme);
+	VME_SLOT(config, "slot3",  focus32_vme_cards, "fciscsi1", 3, m_vme); 
+	VME_SLOT(config, "slot4",  focus32_vme_cards, "fccpu21b", 4, m_vme); // 25MHz 68020 CPU + two slots with RAM
+	VME_SLOT(config, "slot5",  focus32_vme_cards, nullptr,    5, m_vme); //  RAM here
+	VME_SLOT(config, "slot6",  focus32_vme_cards, nullptr,    6, m_vme); // and here
+	VME_SLOT(config, "slot7",  focus32_vme_cards, nullptr,    7, m_vme);
+	VME_SLOT(config, "slot8",  focus32_vme_cards, nullptr,    8, m_vme);
+	VME_SLOT(config, "slot9",  focus32_vme_cards, nullptr,    9, m_vme);
+	VME_SLOT(config, "slot10", focus32_vme_cards, "fcagc1",  10, m_vme);
+	VME_SLOT(config, "slot11", focus32_vme_cards, nullptr,   11, m_vme);
+	VME_SLOT(config, "slot12", focus32_vme_cards, nullptr,   12, m_vme);
+}
+
+/* ROM configurations */
+ROM_START(focus32) ROM_END
+
+/* Boards supported by same rom set, need to do like this to avoid need for multi named rom sets */
+#define rom_focus32a     rom_focus32
+#define rom_focus32b     rom_focus32
 
 /* Drivers TODO: setup distinct focus32 machine configurations */
-/*    YEAR  NAME       PARENT  COMPAT  MACHINE    INPUT      CLASS            INIT        COMPANY            FULLNAME     FLAGS */
-COMP( 1987, focus32, 0,      0,      focus32, focus32, focus32_state, empty_init, "Force Computers", "Force FOCUS 32", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )
+/*    YEAR  NAME      PARENT       COMPAT  MACHINE    INPUT      CLASS            INIT        COMPANY            FULLNAME     FLAGS */
+COMP( 1986, focus32a, 0,            0,      focus32a, focus32, focus32_state, empty_init, "Force Computers", "Force FOCUS 32, PDOS System 21A", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )
+COMP( 1986, focus32b, focus32a,     0,      focus32b, focus32, focus32_state, empty_init, "Force Computers", "Force FOCUS 32, PDOS System 21B", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )

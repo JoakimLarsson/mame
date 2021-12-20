@@ -55,8 +55,7 @@
 //  CONSTANTS
 //**************************************************************************
 
-//void vme_slot1(device_slot_interface &device); // Disabled until we know how to combine a board driver and a slot device.
-void vme_slots(device_slot_interface &device);
+//void vme_slots(device_slot_interface &device);
 
 class device_vme_card_interface; // This interface is standardized
 class vme_device;
@@ -102,9 +101,6 @@ public:
 
 	template <typename T> void set_vme_slot(T &&tag, uint32_t slot_nbr) { m_vme.set_tag(std::forward<T>(tag)); m_slot_nbr = slot_nbr; }
 
-	virtual uint8_t read8(offs_t offset);
-	virtual void write8(offs_t offset, uint8_t data);
-
 protected:
 	vme_slot_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
@@ -123,8 +119,7 @@ protected:
 
 DECLARE_DEVICE_TYPE(VME, vme_device)
 
-
-class vme_card_interface;
+//class vme_card_interface;
 
 class vme_device : public device_t,
 	public device_memory_interface
@@ -184,6 +179,15 @@ public:
 	void install_device(vme_amod_t amod, offs_t start, offs_t end, read16_delegate rhandler, write16_delegate whandler, uint32_t mask);
 	void install_device(vme_amod_t amod, offs_t start, offs_t end, read32_delegate rhandler, write32_delegate whandler, uint32_t mask);
 
+#if 0
+	virtual uint8_t read8(offs_t offset);
+	virtual void write8(offs_t offset, uint8_t data);
+	virtual uint16_t read16(offs_t offset);
+	virtual void write16(offs_t offset, uint16_t data);
+#endif
+	virtual uint32_t read32(offs_t offset, uint32_t mask);
+	virtual void write32(offs_t offset, uint32_t data, uint32_t mask);
+
 protected:
 	vme_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
@@ -203,7 +207,6 @@ protected:
 	bool m_allocspaces;
 
 	const char                 *m_cputag;
-
 };
 
 
@@ -221,8 +224,6 @@ public:
 	// construction/destruction
 	virtual ~device_vme_card_interface();
 
-	virtual uint8_t read8(offs_t offset);
-	virtual void write8(offs_t offset, uint8_t data);
 
 protected:
 	device_vme_card_interface(const machine_config &mconfig, device_t &device);

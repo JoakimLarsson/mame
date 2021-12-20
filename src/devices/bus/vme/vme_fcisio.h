@@ -32,6 +32,10 @@ private:
 
 	uint16_t bootvect_r(offs_t offset);
 
+	// access methods from VME bus
+	uint8_t read(offs_t offset);
+	void write(offs_t offset, uint8_t data);
+
 	/* Dummy driver routines */
 	uint8_t not_implemented_r();
 	void not_implemented_w(uint8_t data);

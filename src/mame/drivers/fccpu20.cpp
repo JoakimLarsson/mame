@@ -94,9 +94,6 @@ cpu20_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device (mconfig, type, tag)
 	{
 	}
-	virtual void machine_start () override { LOGSETUP("%s\n", FUNCNAME); }
-//  virtual void machine_reset () override;
-
 	void init_cpu20()      { LOGSETUP("%s\n", FUNCNAME); }
 	void init_cpu21s()     { LOGSETUP("%s\n", FUNCNAME); }
 	void init_cpu21()      { LOGSETUP("%s\n", FUNCNAME); }
@@ -111,6 +108,10 @@ cpu20_state(const machine_config &mconfig, device_type type, const char *tag)
 	void cpu21b(machine_config &config);
 	void cpu21ya(machine_config &config);
 	void cpu21a(machine_config &config);
+private:  
+	virtual void machine_start () override { LOGSETUP("%s\n", FUNCNAME); }
+//  virtual void machine_reset () override;
+
 };
 
 /* Input ports */
@@ -156,8 +157,8 @@ static void cpu21yb_vme_cards(device_slot_interface &device)
 /* Machine configurations */
 void cpu20_state::cpu20(machine_config &config)
 {
-	VME(config, "vme", 0);
-	VME_SLOT(config, "slot1", cpu20_vme_cards, "fccpu20", 1, "vme");
+	VME(config, "vmefc2", 0);
+	VME_SLOT(config, "slot1", cpu20_vme_cards, "fccpu20", 1, "vmefc2");
 }
 
 void cpu20_state::cpu21s(machine_config &config)
