@@ -147,6 +147,8 @@
 
 #include "cpu/m68000/m68000.h"
 #include "machine/68230pit.h"
+#include "machine/68153bim.h"
+#include "machine/ncr5385.h"
 #include "machine/wd_fdc.h"
 #include "machine/hd63450.h" // compatible with MC68450
 #include "machine/clock.h"
@@ -154,21 +156,18 @@
 
 #define LOG_GENERAL 0x01
 #define LOG_SETUP   0x02
-#define LOG_PRINTF  0x04
+#define LOG_VME     0x04
 #define LOG_READ    0x08
 
-#define VERBOSE (LOG_PRINTF | LOG_SETUP) //  | LOG_GENERAL)
+#define VERBOSE (LOG_VME|LOG_SETUP|LOG_GENERAL)
+#define LOG_OUTPUT_STREAM std::cout
 
-#define LOGMASK(mask, ...)   do { if (VERBOSE & mask) logerror(__VA_ARGS__); } while (0)
-#define LOGLEVEL(mask, level, ...) do { if ((VERBOSE & mask) >= level) logerror(__VA_ARGS__); } while (0)
+#include "logmacro.h"
 
-#define LOG(...)      LOGMASK(LOG_GENERAL, __VA_ARGS__)
-#define LOGSETUP(...) LOGMASK(LOG_SETUP,   __VA_ARGS__)
-#define LOGR(...)     LOGMASK(LOG_READ,    __VA_ARGS__)
-
-#if VERBOSE & LOG_PRINTF
-#define logerror printf
-#endif
+#define LOG(...)      LOGMASKED(LOG_GENERAL, __VA_ARGS__)
+#define LOGSETUP(...) LOGMASKED(LOG_SETUP,   __VA_ARGS__)
+#define LOGVME(...)   LOGMASKED(LOG_VME,     __VA_ARGS__)
+#define LOGR(...)     LOGMASKED(LOG_READ,    __VA_ARGS__)
 
 #ifdef _MSC_VER
 #define FUNCNAME __func__
@@ -192,14 +191,14 @@ void vme_fcscsi1_card_device::fcscsi1_mem(address_map &map)
 	map.unmap_value_high();
 	map(0x000000, 0x000007).rom().r(FUNC(vme_fcscsi1_card_device::bootvect_r));       /* Vectors mapped from System EPROM */
 	map(0x000008, 0x001fff).ram(); /* SRAM */
-	map(0x002000, 0x01ffff).ram(); /* Dual Ported RAM */
-	map(0xe00000, 0xe7ffff).rom(); /* System EPROM Area 32Kb DEBUGGER supplied */
-	map(0xd00000, 0xd0003f).rw("pit", FUNC(pit68230_device::read), FUNC(pit68230_device::write)).umask16(0x00ff);
-//  map(0xc40000, 0xc4001f).rw("scsi", FUNC(ncr5386_device::read), FUNC(ncr5386_device::write)).umask16(0x00ff); /* SCSI Controller interface - device support not yet available*/
-	map(0xc40000, 0xc4001f).rw(FUNC(vme_fcscsi1_card_device::scsi_r), FUNC(vme_fcscsi1_card_device::scsi_w)).umask16(0x00ff);
-	map(0xc80000, 0xc800ff).rw("mc68450", FUNC(hd63450_device::read), FUNC(hd63450_device::write));  /* DMA Controller interface */
+	map(0x002000, 0x01ffff).ram().share("dpram"); /* Dual Ported RAM */
+	map(0xc40000, 0xc4001f).rw("scsi", FUNC(ncr5386s_device::read), FUNC(ncr5386s_device::write)).umask16(0x00ff); /* SCSI Controller interface */
+  	//map(0xc40000, 0xc4001f).rw(FUNC(vme_fcscsi1_card_device::scsi_r), FUNC(vme_fcscsi1_card_device::scsi_w)).umask16(0x00ff);
+	map(0xc80000, 0xc800ff).rw("dmac", FUNC(hd63450_device::read), FUNC(hd63450_device::write));  /* DMA Controller interface */
 	map(0xcc0000, 0xcc0007).rw("fdc", FUNC(wd1772_device::read), FUNC(wd1772_device::write)).umask16(0x00ff);      /* Floppy Controller interface */
 	map(0xcc0009, 0xcc0009).rw(FUNC(vme_fcscsi1_card_device::tcr_r), FUNC(vme_fcscsi1_card_device::tcr_w)); /* The Control Register, SCSI ID and FD drive select bits */
+	map(0xe00000, 0xe7ffff).rom(); /* System EPROM Area 32Kb DEBUGGER supplied */
+	map(0xd00000, 0xd0003f).rw("pit", FUNC(pit68230_device::read), FUNC(pit68230_device::write)).umask16(0x00ff);
 }
 
 /*
@@ -252,7 +251,6 @@ static void fcscsi_floppies(device_slot_interface &device)
 	device.option_add("525qd", FLOPPY_525_QD);
 }
 
-
 /* ROM definitions */
 ROM_START (fcscsi1)
 	ROM_REGION (0x1000000, "maincpu", 0)
@@ -269,7 +267,6 @@ ROM_START (fcscsi1)
 
 ROM_END
 
-
 void vme_fcscsi1_card_device::device_add_mconfig(machine_config &config)
 {
 	/* basic machine hardware */
@@ -280,7 +277,7 @@ void vme_fcscsi1_card_device::device_add_mconfig(machine_config &config)
 	/* FDC  */
 	WD1772(config, m_fdc, PIT_CRYSTAL / 2);
 	m_fdc->intrq_wr_callback().set(FUNC(vme_fcscsi1_card_device::fdc_irq));
-	m_fdc->drq_wr_callback().set("mc68450", FUNC(hd63450_device::drq1_w));
+	m_fdc->drq_wr_callback().set("dmac", FUNC(hd63450_device::drq1_w));
 	FLOPPY_CONNECTOR(config, "fdc:0", fcscsi_floppies, "525qd", floppy_image_device::default_pc_floppy_formats);
 	FLOPPY_CONNECTOR(config, "fdc:1", fcscsi_floppies, "525qd", floppy_image_device::default_pc_floppy_formats);
 	FLOPPY_CONNECTOR(config, "fdc:2", fcscsi_floppies, "525qd", floppy_image_device::default_pc_floppy_formats);
@@ -299,6 +296,14 @@ void vme_fcscsi1_card_device::device_add_mconfig(machine_config &config)
 	//m_dmac->dma_write<0>().set(FUNC(vme_fcscsi1_card_device::scsi_write_byte));
 	m_dmac->dma_read<1>().set(FUNC(vme_fcscsi1_card_device::fdc_read_byte));  // ch 1 = fdc
 	m_dmac->dma_write<1>().set(FUNC(vme_fcscsi1_card_device::fdc_write_byte));
+
+	/* BIM */
+	MC68153(config, m_bim, XTAL(20'000'000) / 2);
+
+	NCR5386S(config, m_scsi, XTAL(20'000'000)/2);
+        //m_scsi->irq().set(FUNC(vp415_state::cpu_int1_w));
+
+
 }
 
 const tiny_rom_entry *vme_fcscsi1_card_device::device_rom_region() const
@@ -316,7 +321,9 @@ vme_fcscsi1_card_device::vme_fcscsi1_card_device(const machine_config &mconfig, 
 	, m_maincpu(*this, "maincpu")
 	, m_fdc(*this, "fdc")
 	, m_pit(*this, "pit")
-	, m_dmac(*this, "mc68450")
+	, m_bim (*this, "bim")
+	, m_dmac(*this, "dmac")
+	, m_scsi(*this, "scsi")
 	, m_tcr(0)
 {
 	LOG("%s\n", FUNCNAME);
@@ -343,17 +350,57 @@ void vme_fcscsi1_card_device::device_start()
 			      0xffffffff);
 }
 
+// Access methods from VME side. TODO: Make them D16 not D8
 uint8_t vme_fcscsi1_card_device::read8(offs_t offset)
 {
-	uint8_t result =  m_maincpu->space(AS_PROGRAM).read_byte(offset);
-	LOGR("%s offset:%02x -> data%02x\n", FUNCNAME, offset, result);
+	uint8_t result = 0;
+	if (offset >= 0x2000) // Dual Ported RAM
+	{
+		result = m_maincpu->space(AS_PROGRAM).read_byte(offset);
+		LOGR("%s DPRAM data offset:%02x -> %02x\n", FUNCNAME, offset, result);
+	}
+	else if (offset == 0x00) // Bit 8 = Local RESET state, Bit 9 = Local CPU HALT state, Bit 10 = Watchdog Timer State  
+	{
+		LOGVME("%s Read out states of local CPU Reset, Halt and Watchdog, \n", FUNCNAME);
+	}
+	else if (offset < 0x10) // BIM
+	{
+		result = m_bim->read((offset - 1) >> 1);
+		LOGVME("%s BIM data offset:%02x -> %02x\n", FUNCNAME, offset, result);
+	}
+	else if (offset == 0x1001) // Interrupt trigger
+	{
+		LOGVME("%s Interrupt trigger at offset:%02x\n", FUNCNAME, offset);
+	}
+	else if (offset == 0x1801) // Reset trigger
+	{
+		LOGVME("%s Reset trigger at offset:%02x\n", FUNCNAME, offset);
+	}
+	else
+	{
+		LOGVME("%s Unknown read at offset:%02x\n", FUNCNAME, offset);
+	}
+	
 	return result;
 }
 
 void vme_fcscsi1_card_device::write8(offs_t offset, uint8_t data)
 {
-	LOGSETUP("%s offset:%02x data:%02x\n", FUNCNAME, offset, data);
-	m_maincpu->space(AS_PROGRAM).write_byte(offset, data);
+	if (offset >= 0x2000) // Dual Ported RAM
+	{
+		m_maincpu->space(AS_PROGRAM).write_byte(offset, data);
+		LOGVME("%s DPRAM offset:%02x <- %02x\n", FUNCNAME, offset, data);
+	}
+	else if (offset < 0x10) // BIM
+	{
+		m_bim->write((offset - 1) >> 1, data);
+		LOGVME("%s BIM data offset:%02x <- BIM data:%02x\n", FUNCNAME, offset, data);
+	}
+	else
+	{
+		LOGVME("%s Unknown write with data %02x at offset:%02x\n", FUNCNAME, data, offset);
+	}
+	
 	return;
 }
 

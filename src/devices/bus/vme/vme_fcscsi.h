@@ -7,7 +7,9 @@
 
 #include "imagedev/floppy.h"
 #include "machine/68230pit.h"
+#include "machine/68153bim.h"
 #include "machine/wd_fdc.h"
+#include "machine/ncr5385.h"
 #include "machine/hd63450.h" // compatible with MC68450
 #include "bus/vme/vme.h"
 
@@ -65,7 +67,9 @@ private:
 	required_device<cpu_device> m_maincpu;
 	required_device<wd1772_device> m_fdc;
 	required_device<pit68230_device> m_pit;
+	required_device<bim68153_device> m_bim;
 	required_device<hd63450_device> m_dmac;
+	required_device<ncr5386s_device> m_scsi;
 
 	uint8_t m_tcr;
 

@@ -33,8 +33,8 @@
 #define LOG_READ    (1U <<  3)
 #define LOG_IACK    (1U <<  4)
 
-//#define VERBOSE ( LOG_SETUP | LOG_INT | LOG_IACK | LOG_GENERAL | LOG_READ)
-//#define LOG_OUTPUT_FUNC printf
+#define VERBOSE ( LOG_SETUP ) //| LOG_INT | LOG_IACK | LOG_GENERAL | LOG_READ)
+#define LOG_OUTPUT_FUNC printf
 
 #include "logmacro.h"
 
