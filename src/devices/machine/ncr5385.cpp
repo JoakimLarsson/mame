@@ -13,10 +13,24 @@
 #include "ncr5385.h"
 
 DEFINE_DEVICE_TYPE(NCR5385, ncr5385_device, "ncr5385", "NCR 5385E SCSI Controller")
+DEFINE_DEVICE_TYPE(NCR5386S, ncr5386s_device, "ncr5386s", "NCR 5386S SCSI Controller")
+
+
+// Live device
+ncr5385_device::ncr5385_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint32_t variant)
+	: device_t(mconfig, type, tag, owner, clock)
+	, m_int(*this)
+	, m_variant(variant)
+{
+}
 
 ncr5385_device::ncr5385_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, NCR5385, tag, owner, clock)
-	, m_int(*this)
+	: ncr5385_device(mconfig, NCR5385, tag, owner, clock, VAR_NCR5385)
+{
+}
+
+ncr5386s_device::ncr5386s_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+	: ncr5385_device(mconfig, NCR5386S, tag, owner, clock, VAR_NCR5386S)
 {
 }
 

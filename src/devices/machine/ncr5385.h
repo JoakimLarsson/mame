@@ -55,6 +55,7 @@ class ncr5385_device : public device_t
 public:
 	// construction/destruction
 	ncr5385_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+	ncr5385_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, uint32_t variant);
 
 	auto irq() { return m_int.bind(); }
 
@@ -65,6 +66,12 @@ protected:
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
+
+	enum
+	{
+		VAR_NCR5385  = 0x01,
+		VAR_NCR5386S = 0x02
+	};
 
 private:
 	enum
@@ -119,6 +126,7 @@ private:
 	};
 
 	devcb_write_line m_int;
+	int const m_variant;
 
 	uint32_t m_state;
 	uint8_t m_ctrl_reg;
@@ -127,7 +135,14 @@ private:
 	uint8_t m_diag_status_reg;
 };
 
+class ncr5386s_device : public ncr5385_device
+{
+public:
+	ncr5386s_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
+};
+
 // device type definition
 DECLARE_DEVICE_TYPE(NCR5385, ncr5385_device)
+DECLARE_DEVICE_TYPE(NCR5386S, ncr5386s_device)
 
 #endif // MAME_MACHINE_NCR5385_H
